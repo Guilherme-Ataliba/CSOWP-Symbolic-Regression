@@ -11,6 +11,9 @@ Constants in the algorithm are limited to the range from **zero** to **one**. Th
 
 #### 2. Evaluation of expressions
 
+#### 3. Log
+I removed the log function and the square root function from the possible function because they don't accept negative values. Should implement again.
+
 ## 🔷 Issues to fix
 
 #### 1. Unnecessary random values
