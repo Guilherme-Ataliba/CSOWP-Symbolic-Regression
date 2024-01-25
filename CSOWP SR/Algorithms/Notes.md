@@ -1,5 +1,10 @@
 # 🔵 Baseline Symbolic Regression Algorithm
 
+# 🔵 Questions
+
+## 🔷 Node Id
+I've add a attribute to my main expression tree that will only bhe used in a very specific case, by i use slots in my class declaration, will that impact performance? The method in question is the visualize
+
 ## 🔷 Notes About the Algorithm Functionality 
 
 ### 🔹 Constants
