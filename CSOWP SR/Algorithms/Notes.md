@@ -5,6 +5,8 @@
 ## 🔷 Node Id
 I've add a attribute to my main expression tree that will only bhe used in a very specific case, by i use slots in my class declaration, will that impact performance? The method in question is the visualize
 
+## 🔷 Overflow
+
 ## 🔷 Notes About the Algorithm Functionality 
 
 ### 🔹 Constants
@@ -50,3 +52,6 @@ Elaborate a function that can translate the tree to the correct expression, for 
 #### 8. Zero and negative values on the dataframe
 Zero causes problems for division and negative values cause problems for square root and absolute value
 
+#### 9. Use element type as id, instead of creating a new attribute
+
+### 10. Re add missing operators and functions
