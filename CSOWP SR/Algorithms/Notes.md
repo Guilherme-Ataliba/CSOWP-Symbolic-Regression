@@ -1,9 +1,14 @@
 # 🔵 Baseline Symbolic Regression Algorithm
 
+# 🔵 Improvement Ideas
+
+#### 1. Fitness Metric
+Use a fitness metric that takes into account the length of the expression, smaller expression should have better fitness score. The idea is to reduce overfitting.
+
 # 🔵 Questions
 
 ## 🔷 Node Id
-I've add a attribute to my main expression tree that will only bhe used in a very specific case, by i use slots in my class declaration, will that impact performance? The method in question is the visualize
+I've add a attribute to my main expression tree that will only be used in a very specific case, by i use slots in my class declaration, will that impact performance? The method in question is the visualize
 
 ## 🔷 Overflow
 
