@@ -7,7 +7,7 @@ Use a fitness metric that takes into account the length of the expression, small
 
 # 🔵 Questions
 
-## 🔷 Node Id
+## 🔷 Node Id ✅
 I've add a attribute to my main expression tree that will only be used in a very specific case, by i use slots in my class declaration, will that impact performance? The method in question is the visualize
 
 ## 🔷 Overflow
@@ -35,13 +35,13 @@ Some things must have weights, equal probability is not right. For example:
 These weights should be able to be customized via input (init) of the class
 ## 🔷 Issues to fix
 
-#### 1. Unnecessary random values
+#### 1. Unnecessary random values ✅
 Fix the "generate random expression" function
 
 #### 2. Copy tree has a for loop
 The copy tree function has, besides the recursive part of the code, a for loop to assign the right values for each parent
 
-#### 3. Redo `graphviz` visualization 
+#### 3. Redo `graphviz` visualization ✅
 Study the library and make a tree that shows as it is supposed to
 
 #### 4. Do a code check-up 
@@ -50,13 +50,13 @@ I suppose there are some parts of the code that could be improved, optimized or 
 #### 5. Elaborate a parenthesize expression for fitness future `sympy`
 Elaborate a function that can translate the tree to the correct expression, for `sympy`, but specially for evaluating fitness
 
-#### 6. Create a fit method, instead of using the init
+#### 6. Create a fit method, instead of using the init ✅
 
-#### 7. Simplify the initialized in the init
+#### 7. Simplify the initialized in the init ✅
 
 #### 8. Zero and negative values on the dataframe
 Zero causes problems for division and negative values cause problems for square root and absolute value
 
-#### 9. Use element type as id, instead of creating a new attribute
+#### 9. Use element type as id, instead of creating a new attribute ✅
 
 ### 10. Re add missing operators and functions
