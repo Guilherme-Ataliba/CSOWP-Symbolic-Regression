@@ -1,0 +1,9 @@
+digraph {
+	0 [label="*"]
+	1 [label=x]
+	0 -> 1
+	2 [label=log]
+	0 -> 2
+	3 [label=3.494]
+	2 -> 3
+}

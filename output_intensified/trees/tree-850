@@ -1,0 +1,11 @@
+digraph {
+	0 [label="*"]
+	1 [label=cos]
+	0 -> 1
+	4 [label=x]
+	0 -> 4
+	2 [label=sin]
+	1 -> 2
+	3 [label=0.533]
+	2 -> 3
+}

@@ -1,0 +1,7 @@
+digraph {
+	0 [label=sin]
+	1 [label=tan]
+	0 -> 1
+	2 [label=x]
+	1 -> 2
+}
