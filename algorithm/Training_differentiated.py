@@ -60,13 +60,13 @@ for population in populations:
     
     SR = SymbolicRegression(3, max_expression_size=3, max_population_size=population,
                             max_island_count=int(population/10), random_const_range=(-10, 10))
-    SR.fit(X_inten_scaled, y_inten_scaled, feature_names=["x"])
+    SR.fit(np.c_[X_intensified], y_intensified, feature_names=["x"])
     
     start_time = time.time()
     output_AEG = SR.predict()
     end_time = time.time()
     data = SR.evaluate_tree(output_AEG.sexp)
-    data = pd.DataFrame(np.c_[X_inten_scaled, data], columns=["x", "y"])
+    data = pd.DataFrame(np.c_[X_intensified, data], columns=["x", "y"])
     data.to_csv(DIR_PATH + f"data/data-{population}.csv", sep=",", index=False)
     
     graph = output_AEG.sexp.visualize_tree()

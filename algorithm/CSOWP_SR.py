@@ -520,7 +520,7 @@ class SymbolicRegression():
         # print(population)
         return population
                 
-        
+
     def mutateSExp(self, me: AEG) -> AEG:
         """mutateSExp randomly alters an input s-expression by replacing a randomly selected sub expression 
         with a new randomly grown sub expression
@@ -535,20 +535,58 @@ class SymbolicRegression():
             if c == n_steps:
                 
                 if not copied.is_leaf(p):
-                    copied.replace(p, self._options[p.element_type()](), p.element_type())
+                    random_number = randint(0,1)
+                    
+                    # attach subtree above
+                    if random_number == 0:
+                        parent = copied.parent(p)
+                        new_subtree = self.generate_expr(1)
+                        
+                        left_most_element = next(new_subtree.inorder())
+                        if new_subtree.is_root(left_most_element):
+                            left_most_element = next(new_subtree.postorder())
+                        
+                        left_most_parent = new_subtree.parent(left_most_element)
+                        new_subtree.delete(left_most_element)
+                        
+                        if copied.is_root(p):
+                            left_most_parent.Node._left = copied.root().Node
+                            copied.root().Node._parent = left_most_parent.Node
+                            copied._root = new_subtree.root().Node
+                            
+                        else:
+                            copied_parent = copied.parent(p)
+                            if copied.is_left(p):
+                                copied_parent.Node._left = new_subtree._root
+                            else:
+                                copied_parent.Node._right = new_subtree._root
+                            
+                            left_most_parent.Node._left = p.Node
+                            p.Node._parent = left_most_parent.Node
+                            new_subtree._root._parent = copied_parent.Node
+                            
+                            
+                    
+                    # Change by the same type
+                    else:    
+                        copied.replace(p, self._options[p.element_type()](), p.element_type())
                     
                 # its a leaf
                 else:
                     random_number = randint(0,2)                    
-                    if random_number == 0:
+                    
+                    # Change by the same time
+                    if random_number == 0:  
                         copied.replace(p, self._options[p.element_type()](), p.element_type())
 
+                    # Attach a random subtree
                     elif random_number == 1:
                         size = randint(1, 2)
                         subtree = self.generate_expr(size)
                         
                         copied.attach_subtree(p,subtree)
                     
+                    # Delete the node
                     elif random_number == 2:
                         parent = copied.parent(p)
                         e_type = parent.element_type()
