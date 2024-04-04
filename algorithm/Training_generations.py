@@ -35,7 +35,7 @@ X_inten_scaled = scaler.fit_transform(np.c_[X_intensified])
 y_inten_scaled = scaler.fit_transform(np.c_[y_intensified]); y_inten_scaled = y_inten_scaled.reshape(-1, )
 
 # Generations to train
-generations = [i for i in range(1, 201)]
+generations = [i for i in range(1, 101)]
 print(generations)
 
 DIR_PATH = "output_generations_increased/"
