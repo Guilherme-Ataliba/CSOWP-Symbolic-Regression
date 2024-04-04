@@ -12,7 +12,7 @@
 <g id="node1" class="node">
 <title>0</title>
 <ellipse fill="none" stroke="black" cx="67" cy="-234" rx="27" ry="18"/>
-<text text-anchor="middle" x="67" y="-228.57" font-family="Times New Roman,serif" font-size="14.00">tanh</text>
+<text text-anchor="middle" x="67" y="-228.57" font-family="Times New Roman,serif" font-size="14.00">sin</text>
 </g>
 <!-- 1 -->
 <g id="node2" class="node">

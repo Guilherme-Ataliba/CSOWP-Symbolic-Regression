@@ -11,8 +11,8 @@
 <!-- 0 -->
 <g id="node1" class="node">
 <title>0</title>
-<ellipse fill="none" stroke="black" cx="63" cy="-234" rx="35.1" ry="18"/>
-<text text-anchor="middle" x="63" y="-228.57" font-family="Times New Roman,serif" font-size="14.00">square</text>
+<ellipse fill="none" stroke="black" cx="63" cy="-234" rx="29.61" ry="18"/>
+<text text-anchor="middle" x="63" y="-228.57" font-family="Times New Roman,serif" font-size="14.00">quart</text>
 </g>
 <!-- 1 -->
 <g id="node2" class="node">

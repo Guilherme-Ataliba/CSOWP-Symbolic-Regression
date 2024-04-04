@@ -1,0 +1,9 @@
+digraph {
+	0 [label=square]
+	1 [label="/"]
+	0 -> 1
+	2 [label=5.592]
+	1 -> 2
+	3 [label=8.061]
+	1 -> 3
+}

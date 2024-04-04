@@ -1,0 +1,7 @@
+digraph {
+	0 [label=exp]
+	1 [label=sin]
+	0 -> 1
+	2 [label=3.743]
+	1 -> 2
+}

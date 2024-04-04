@@ -34,24 +34,13 @@ scaler = MinMaxScaler((0,1))
 X_inten_scaled = scaler.fit_transform(np.c_[X_intensified])
 y_inten_scaled = scaler.fit_transform(np.c_[y_intensified]); y_inten_scaled = y_inten_scaled.reshape(-1, )
 
-# Generations to train
-generations = [i for i in range(1, 101)]
-print(generations)
-
 DIR_PATH = "output_generations_increased/"
-
-if os.path.isfile(DIR_PATH + "results.csv"):
-    raise OSError("File exists")
-else:
-    with open(DIR_PATH + "results.csv", "w") as file:
-        file.write("max_generations, fitness_score, training_time\n")
-
 
 # Training the Model
 population = 2000
 
-for generation in generations:
-    print(f"Training for generations {generation}")
+def train_generations_increased(generation):
+    print(f"Training for generations {generation} - train_generations_increased")
     
     SR = SymbolicRegression(generation, max_expression_size=3, max_population_size=population,
                             max_island_count=int(population/10), random_const_range=(-10, 10))
@@ -61,6 +50,11 @@ for generation in generations:
     output_AEG = SR.predict()
     end_time = time.time()
     data = SR.evaluate_tree(output_AEG.sexp)
+
+    # In case the output is a constant function
+    if data.shape[0] == 1:
+        data = np.array([data[0] for i in range(0, 1000)])
+
     data = pd.DataFrame(np.c_[X_inten_scaled, data], columns=["x", "y"])
     data.to_csv(DIR_PATH + f"data/data-{generation}.csv", sep=",", index=False)
     

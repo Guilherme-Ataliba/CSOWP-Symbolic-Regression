@@ -1,9 +1,11 @@
 digraph {
-	0 [label=exp]
-	1 [label=cube]
+	0 [label=tanh]
+	1 [label=quart]
 	0 -> 1
-	2 [label=log]
+	2 [label="+"]
 	1 -> 2
 	3 [label=x]
 	2 -> 3
+	4 [label=x]
+	2 -> 4
 }

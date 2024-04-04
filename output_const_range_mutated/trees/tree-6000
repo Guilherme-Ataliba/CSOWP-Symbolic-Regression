@@ -1,0 +1,9 @@
+digraph {
+	0 [label=tanh]
+	1 [label="*"]
+	0 -> 1
+	2 [label=x]
+	1 -> 2
+	3 [label=2.676]
+	1 -> 3
+}

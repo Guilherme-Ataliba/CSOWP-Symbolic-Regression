@@ -40,32 +40,25 @@ y_differentiated = np.gradient(y_intensified.reshape(1000, ), X_intensified.resh
 y_diff_scaled = scaler.fit_transform(np.c_[y_differentiated]); y_diff_scaled = y_diff_scaled.reshape(-1, )
 
 
-# Populations to train
-populations = [20, 30, 40, 50, 60, 70, 80, 90, 100, 125, 150, 175, 200,
-               250, 300, 350, 400, 550, 600, 750, 800, 950, 1000, 
-               2000, 3000, 4000, 5000, 6000, 7000]
-
-
 # Training the Model - Nonscaled
 DIR_PATH = "output_differentiated/"
 
-if os.path.isfile(DIR_PATH + "results.csv"):
-    raise OSError("File exists")
-else:
-    with open(DIR_PATH + "results.csv", "w") as file:
-        file.write("population_size, fitness_score, training_time\n")
-
-for population in populations:
-    print(f"Training for population {population}")
+def train_inten_diff(population):
+    print(f"Training for population {population} - train_inten_diff")
     
     SR = SymbolicRegression(3, max_expression_size=3, max_population_size=population,
                             max_island_count=int(population/10), random_const_range=(-10, 10))
-    SR.fit(np.c_[X_intensified], y_intensified, feature_names=["x"])
+    SR.fit(np.c_[X_intensified], y_differentiated, feature_names=["x"])
     
     start_time = time.time()
     output_AEG = SR.predict()
     end_time = time.time()
-    data = SR.evaluate_tree(output_AEG.sexp)
+    data = SR.evaluate_tree(output_AEG.sexp)    
+
+    # In case the output is a constant function
+    if data.shape[0] == 1:
+        data = np.array([data[0] for i in range(0, 1000)])
+
     data = pd.DataFrame(np.c_[X_intensified, data], columns=["x", "y"])
     data.to_csv(DIR_PATH + f"data/data-{population}.csv", sep=",", index=False)
     
@@ -80,23 +73,22 @@ for population in populations:
 # Training the Model - Scaled
 DIR_PATH = "output_diff_scaled/"
 
-if os.path.isfile(DIR_PATH + "results.csv"):
-    raise OSError("File exists")
-else:
-    with open(DIR_PATH + "results.csv", "w") as file:
-        file.write("population_size, fitness_score, training_time\n")
-
-for population in populations:
-    print(f"Training for population {population}")
+def train_iten_diff_scaled(population):
+    print(f"Training for population {population} - train_inten_diff_scaled")
     
     SR = SymbolicRegression(3, max_expression_size=3, max_population_size=population,
                             max_island_count=int(population/10), random_const_range=(-10, 10))
-    SR.fit(X_inten_scaled, y_inten_scaled, feature_names=["x"])
+    SR.fit(X_inten_scaled, y_diff_scaled, feature_names=["x"])
     
     start_time = time.time()
     output_AEG = SR.predict()
     end_time = time.time()
     data = SR.evaluate_tree(output_AEG.sexp)
+
+    # In case the output is a constant function
+    if data.shape[0] == 1:
+        data = np.array([data[0] for i in range(0, 1000)])
+
     data = pd.DataFrame(np.c_[X_inten_scaled, data], columns=["x", "y"])
     data.to_csv(DIR_PATH + f"data/data-{population}.csv", sep=",", index=False)
     

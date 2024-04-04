@@ -1,5 +1,5 @@
 digraph {
-	0 [label=square]
+	0 [label=quart]
 	1 [label=sin]
 	0 -> 1
 	2 [label="+"]

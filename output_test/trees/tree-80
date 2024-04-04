@@ -1,0 +1,11 @@
+digraph {
+	0 [label=tan]
+	1 [label=quart]
+	0 -> 1
+	2 [label="+"]
+	1 -> 2
+	3 [label=3.855]
+	2 -> 3
+	4 [label=-8.476]
+	2 -> 4
+}
