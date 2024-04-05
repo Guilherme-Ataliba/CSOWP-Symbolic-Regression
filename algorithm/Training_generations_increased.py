@@ -40,7 +40,7 @@ DIR_PATH = "output_generations_increased/"
 population = 2000
 
 def train_generations_increased(generation):
-    print(f"Training for generations {generation} - train_generations_increased")
+    print(f"=-=-=-=-=-=-=-=-=- Training for generations {generation} - train_generations_increased =-=-=-=-=-=-=-=-=-")
     
     SR = SymbolicRegression(generation, max_expression_size=3, max_population_size=population,
                             max_island_count=int(population/10), random_const_range=(-10, 10))
@@ -63,3 +63,5 @@ def train_generations_increased(generation):
     
     with open(DIR_PATH + "results.csv", "a") as file:
         file.write(f"{generation}, {SR.fitness_score(output_AEG)}, {end_time - start_time}\n")
+    
+    print(f"=-=-=-=-=-=-=-=-=- Finished training for generations {generation} - train_generations_increased =-=-=-=-=-=-=-=-=-")

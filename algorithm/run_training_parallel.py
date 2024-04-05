@@ -1,6 +1,7 @@
 import time
 from Training_differentiated import *
 from Training_generations_increased import *
+from Training_inten_scaled_spaced import *
 import concurrent.futures
 import os
 
@@ -47,3 +48,18 @@ if __name__ == "__main__":
 
     with concurrent.futures.ProcessPoolExecutor() as executor:
         results = executor.map(train_generations_increased, generations)
+
+    #-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+
+    populations = [i for i in range(100, 7100, 100)]
+
+    DIR_PATH = "output_inten_scaled_spaced/"
+
+    if os.path.isfile(DIR_PATH + "results.csv"):
+        raise OSError("File exists")
+    else:
+        with open(DIR_PATH + "results.csv", "w") as file:
+            file.write("population_size, fitness_score, training_time\n")
+
+    with concurrent.futures.ProcessPoolExecutor() as executor:
+        results = executor.map(train_inten_scaled_spaced, populations)

@@ -1,13 +1,9 @@
 digraph {
-	0 [label="+"]
-	1 [label="/"]
+	0 [label=tan]
+	1 [label="-"]
 	0 -> 1
-	4 [label=sin]
-	0 -> 4
-	2 [label=x]
+	2 [label=7.261]
 	1 -> 2
-	3 [label=1.092]
+	3 [label=-5.778]
 	1 -> 3
-	5 [label=8.609]
-	4 -> 5
 }

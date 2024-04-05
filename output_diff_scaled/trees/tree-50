@@ -1,13 +1,5 @@
 digraph {
-	0 [label="+"]
-	1 [label=x]
+	0 [label=exp]
+	1 [label=-0.72]
 	0 -> 1
-	2 [label="*"]
-	0 -> 2
-	3 [label=x]
-	2 -> 3
-	4 [label=sin]
-	2 -> 4
-	5 [label=-6.065]
-	4 -> 5
 }

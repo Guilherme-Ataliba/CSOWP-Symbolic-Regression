@@ -1,13 +1,9 @@
 digraph {
-	0 [label=sqrt]
+	0 [label=abs]
 	1 [label="*"]
 	0 -> 1
-	2 [label="*"]
+	2 [label=-7.097]
 	1 -> 2
-	5 [label=x]
-	1 -> 5
-	3 [label=0.674]
-	2 -> 3
-	4 [label=x]
-	2 -> 4
+	3 [label=-0.065]
+	1 -> 3
 }

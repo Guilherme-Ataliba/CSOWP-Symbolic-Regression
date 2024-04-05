@@ -41,10 +41,12 @@ y_diff_scaled = scaler.fit_transform(np.c_[y_differentiated]); y_diff_scaled = y
 
 
 # Training the Model - Nonscaled
-DIR_PATH = "output_differentiated/"
+
 
 def train_inten_diff(population):
-    print(f"Training for population {population} - train_inten_diff")
+    DIR_PATH = "output_differentiated/"
+
+    print(f"=-=-=-=-=-=-=-=-=- Training for population {population} - train_inten_diff =-=-=-=-=-=-=-=-=-")
     
     SR = SymbolicRegression(3, max_expression_size=3, max_population_size=population,
                             max_island_count=int(population/10), random_const_range=(-10, 10))
@@ -68,13 +70,16 @@ def train_inten_diff(population):
     with open(DIR_PATH + "results.csv", "a") as file:
         file.write(f"{population}, {SR.fitness_score(output_AEG)}, {end_time - start_time}\n")
 
+    print(f"=-=-=-=-=-=-=-=-=- Finished training for population {population} - train_inten_diff =-=-=-=-=-=-=-=-=-")
+
 
 
 # Training the Model - Scaled
-DIR_PATH = "output_diff_scaled/"
 
 def train_iten_diff_scaled(population):
-    print(f"Training for population {population} - train_inten_diff_scaled")
+    DIR_PATH = "output_diff_scaled/"
+
+    print(f"=-=-=-=-=-=-=-=-=- Training for population {population} - train_inten_diff_scaled =-=-=-=-=-=-=-=-=-")
     
     SR = SymbolicRegression(3, max_expression_size=3, max_population_size=population,
                             max_island_count=int(population/10), random_const_range=(-10, 10))
@@ -97,3 +102,5 @@ def train_iten_diff_scaled(population):
     
     with open(DIR_PATH + "results.csv", "a") as file:
         file.write(f"{population}, {SR.fitness_score(output_AEG)}, {end_time - start_time}\n")
+
+    print(f"=-=-=-=-=-=-=-=-=- Finished training for population {population} - train_inten_diff_scaled =-=-=-=-=-=-=-=-=-")

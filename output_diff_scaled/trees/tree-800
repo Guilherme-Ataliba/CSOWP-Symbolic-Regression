@@ -1,11 +1,9 @@
 digraph {
-	0 [label=square]
-	1 [label=sin]
+	0 [label=cos]
+	1 [label="/"]
 	0 -> 1
-	2 [label="+"]
+	2 [label=x]
 	1 -> 2
-	3 [label=x]
-	2 -> 3
-	4 [label=x]
-	2 -> 4
+	3 [label=-7.618]
+	1 -> 3
 }

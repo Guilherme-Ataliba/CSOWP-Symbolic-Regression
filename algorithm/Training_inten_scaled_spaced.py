@@ -35,21 +35,11 @@ X_inten_scaled = scaler.fit_transform(np.c_[X_intensified])
 y_inten_scaled = scaler.fit_transform(np.c_[y_intensified]); y_inten_scaled = y_inten_scaled.reshape(-1, )
 
 
-# Populations to train
-populations = [i for i in range(100, 7100, 100)]
-
-
 # Training the Model
 DIR_PATH = "output_inten_scaled_spaced/"
 
-if os.path.isfile(DIR_PATH + "results.csv"):
-    raise OSError("File exists")
-else:
-    with open(DIR_PATH + "results.csv", "w") as file:
-        file.write("population_size, fitness_score, training_time\n")
-
-for population in populations:
-    print(f"Training for population {population}")
+def train_inten_scaled_spaced(population):
+    print(f"=-=-=-=-=-=-=-=-=- Training for population {population} - train_inten_scaled_spaced =-=-=-=-=-=-=-=-=-")
     
     SR = SymbolicRegression(3, max_expression_size=3, max_population_size=population,
                             max_island_count=int(population/10), random_const_range=(-10, 10))
@@ -67,5 +57,7 @@ for population in populations:
     
     with open(DIR_PATH + "results.csv", "a") as file:
         file.write(f"{population}, {SR.fitness_score(output_AEG)}, {end_time - start_time}\n")
+
+    print(f"=-=-=-=-=-=-=-=-=- Finished training for population {population} - train_inten_scaled_spaced =-=-=-=-=-=-=-=-=-")
 
 
