@@ -1,0 +1,7 @@
+digraph {
+	0 [label=cos]
+	1 [label=square]
+	0 -> 1
+	2 [label=2.245]
+	1 -> 2
+}

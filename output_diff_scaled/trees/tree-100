@@ -1,7 +1,0 @@
-digraph {
-	0 [label=exp]
-	1 [label=tanh]
-	0 -> 1
-	2 [label=-0.834]
-	1 -> 2
-}

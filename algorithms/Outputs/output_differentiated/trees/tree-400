@@ -1,0 +1,7 @@
+digraph {
+	0 [label=tan]
+	1 [label=abs]
+	0 -> 1
+	2 [label=3.615]
+	1 -> 2
+}

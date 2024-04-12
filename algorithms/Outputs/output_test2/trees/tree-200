@@ -1,0 +1,19 @@
+digraph {
+	0 [label="+"]
+	1 [label="-"]
+	0 -> 1
+	5 [label="*"]
+	0 -> 5
+	2 [label=2.951]
+	1 -> 2
+	3 [label=tan]
+	1 -> 3
+	4 [label=x]
+	3 -> 4
+	6 [label=cos]
+	5 -> 6
+	8 [label=x]
+	5 -> 8
+	7 [label=-6.929]
+	6 -> 7
+}

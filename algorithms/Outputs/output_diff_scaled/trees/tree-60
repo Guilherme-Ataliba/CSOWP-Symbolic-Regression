@@ -1,0 +1,5 @@
+digraph {
+	0 [label=tan]
+	1 [label=6.575]
+	0 -> 1
+}

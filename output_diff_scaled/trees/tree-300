@@ -1,7 +1,0 @@
-digraph {
-	0 [label=sin]
-	1 [label=tan]
-	0 -> 1
-	2 [label=4.348]
-	1 -> 2
-}
