@@ -1,3 +1,4 @@
 #  To implement
- - [ ] Finish Parallel Training
- - [ ] Create data automatic data analysis 
+ - [ ] Create automatic data analysis 
+    - [x] Export to sympy expr
+    - [ ] Inverse normal transform

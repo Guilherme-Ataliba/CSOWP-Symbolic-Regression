@@ -3,6 +3,7 @@ from random import randint, choice, uniform
 import graphviz
 from typing import Any, List
 from functools import singledispatchmethod
+import sympy as smp
 
 class ExpressionTree():
     """Tree used in the symbolic regression algorithm"""
@@ -292,7 +293,50 @@ class ExpressionTree():
                 dot.edge(parent_element_type, element_type)
         return dot
             
+    def toString(self, operators, functions):
+        
+        def recursive_lamb(root):
+            if root is None:
+                return ""
+            
+            if root._left is None and root._right is None:
+                return str(root._element)
+            
+            left = recursive_lamb(root._left)
+            right = recursive_lamb(root._right)
+
+            if root._element in operators:
+                return "(" + left + str(root._element) + right + ")"
+            elif root._element in functions:
+                if left == "":
+                    node = right
+                else: 
+                    node = left
+                return root._element + "(" + node + ")"
+        
+        return recursive_lamb(self.root().Node)
     
+    def toSmpExpr(self, operators, functions):
+        expr_string = self.toString(operators, functions)
+        return smp.sympify(expr_string)
+
+    def toFunc(self, operators, functions, feature_names=None, interpreter="numpy"):
+        smp_expr = self.toSmpExpr(operators, functions)
+
+        if feature_names is None:
+            symbols_list = list(smp_expr.free_symbols)
+        else:
+            symbols_list = feature_names
+
+        symbols_string = ""
+        for i in symbols_list:
+            symbols_string += f"{i}, "
+
+        symbols = smp.symbols(symbols_string)
+        
+        return smp.lambdify(symbols, smp_expr, interpreter)
+
+
     def copy_tree(self, root):
         """!!!!!!! Não muito eficiente pois precisa de um loop para definir os pais de cada nó"""
         new_tree = ExpressionTree()
