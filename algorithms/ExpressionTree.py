@@ -1,7 +1,7 @@
 import numpy as np
 from random import randint, choice, uniform
 import graphviz
-from typing import Any, List
+from typing import Any, List, Dict
 from functools import singledispatchmethod
 import sympy as smp
 
@@ -320,8 +320,10 @@ class ExpressionTree():
         expr_string = self.toString(operators, functions)
         return smp.sympify(expr_string)
 
-    def toFunc(self, operators, functions, feature_names=None, interpreter="numpy"):
+    def toFunc(self, operators, functions, feature_names=None, interpreter="numpy",
+               inv_data: Dict = None):
         smp_expr = self.toSmpExpr(operators, functions)
+        
 
         if feature_names is None:
             symbols_list = list(smp_expr.free_symbols)
@@ -333,8 +335,15 @@ class ExpressionTree():
             symbols_string += f"{i}, "
 
         symbols = smp.symbols(symbols_string)
+
+        if inv_data is not None:
+            if len(feature_names) > 1:
+                raise("Only implemented for functions of one variable")
+            
+            smp_expr = (inv_data["ymax"] - inv_data["ymin"])*smp_expr.subs(symbols[0], (symbols[0] - inv_data["Xmin"])/(inv_data["Xmax"] - inv_data["Xmin"])) + inv_data["ymin"]
+
         
-        return smp.lambdify(symbols, smp_expr, interpreter)
+        return smp.lambdify(symbols, smp_expr, interpreter), smp_expr
 
 
     def copy_tree(self, root):

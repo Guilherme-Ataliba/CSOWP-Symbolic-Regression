@@ -67,3 +67,4 @@ def testAlgorithm(func, x_range, n_points, dir_path, population, generations,
         with open(dir_path + "/results.csv", "a") as file:
             file.write(f"{SR.fitness_score(output_AEG)}, {population}, {generations}, {end_time - start_time}\n")
     
+    return X, y
