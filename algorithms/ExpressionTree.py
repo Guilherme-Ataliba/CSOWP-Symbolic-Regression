@@ -315,6 +315,8 @@ class ExpressionTree():
                 
                 if root._element == "cube":
                     return "(" + node + ")" + "**3"
+                elif root._element == "quart":
+                    return "(" + node + ")" + "**4"
                 else:
                     return root._element + "(" + node + ")"
         
@@ -347,8 +349,8 @@ class ExpressionTree():
             if len(feature_names) > 1:
                 raise("Only implemented for functions of one variable")
             
-            smp_expr = (inv_data["ymax"] - inv_data["ymin"])*smp_expr.subs(symbols[0], (symbols[0] - inv_data["Xmin"])/(inv_data["Xmax"] - inv_data["Xmin"])) + inv_data["ymin"]
-
+            inv_smp_expr = (inv_data["ymax"] - inv_data["ymin"])*smp_expr.subs(symbols[0], (symbols[0] - inv_data["Xmin"])/(inv_data["Xmax"] - inv_data["Xmin"])) + inv_data["ymin"]
+            return smp.lambdify(symbols, inv_smp_expr, interpreter), inv_smp_expr, smp_expr
         
         return smp.lambdify(symbols, smp_expr, interpreter), smp_expr
 
