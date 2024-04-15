@@ -312,13 +312,20 @@ class ExpressionTree():
                     node = right
                 else: 
                     node = left
-                return root._element + "(" + node + ")"
+                
+                if root._element == "cube":
+                    return "(" + node + ")" + "**3"
+                else:
+                    return root._element + "(" + node + ")"
         
         return recursive_lamb(self.root().Node)
     
     def toSmpExpr(self, operators, functions):
         expr_string = self.toString(operators, functions)
-        return smp.sympify(expr_string)
+
+        sexp = smp.sympify(expr_string)
+
+        return sexp
 
     def toFunc(self, operators, functions, feature_names=None, interpreter="numpy",
                inv_data: Dict = None):

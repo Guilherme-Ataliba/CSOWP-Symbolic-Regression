@@ -5,6 +5,7 @@ from sklearn.preprocessing import MinMaxScaler
 from time import time
 import os 
 import warnings
+import pickle
 
 os.environ["PATH"] += os.pathsep + 'D:/Program Files (x86)/Graphviz-10.0.1-win64/bin/'
 
@@ -24,7 +25,7 @@ def testAlgorithm(func, x_range, n_points, dir_path, population, generations,
         raise OSError("File exists")
     else:
         with open(dir_path + "/results.csv", "w") as file:
-            file.write("fitness_score, population, generations, training_time\n")
+            file.write("fitness_score,population,generations,training_time\n")
 
 
     # Defining the data ================================
@@ -33,6 +34,8 @@ def testAlgorithm(func, x_range, n_points, dir_path, population, generations,
     y = vfunc(X)
 
     if normalize:
+        originX = X
+        originy = y
         scaler = MinMaxScaler(normalize_range)
         X = scaler.fit_transform(np.c_[X])
         y = scaler.fit_transform(np.c_[y]).reshape(-1, )
@@ -61,10 +64,13 @@ def testAlgorithm(func, x_range, n_points, dir_path, population, generations,
         data = pd.DataFrame(np.c_[X, data], columns=["x", "y"])
         data.to_csv(dir_path + f"/data/data-{population}.csv", sep=",", index=False)
 
-        graph = output_AEG.sexp.visualize_tree()
-        graph.render(dir_path + f"/trees/tree-{population}", format="svg")
+        # graph = output_AEG.sexp.visualize_tree()
+        # graph.render(dir_path + f"/trees/tree-{population}", format="svg")
+
+        with open(dir_path + f"/trees/tree-{population}-{generations}", "wb") as file:
+            pickle.dump(output_AEG.sexp, file)
 
         with open(dir_path + "/results.csv", "a") as file:
-            file.write(f"{SR.fitness_score(output_AEG)}, {population}, {generations}, {end_time - start_time}\n")
+            file.write(f"{SR.fitness_score(output_AEG)},{population},{generations},{end_time - start_time}\n")
     
-    return X, y
+    return originX, originy, SR._operators, SR._functions
