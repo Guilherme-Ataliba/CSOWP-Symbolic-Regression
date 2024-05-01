@@ -73,7 +73,7 @@ class SymbolicRegression():
                 "_operators", "_functions", "_options", "_operators_func", "_functions_func", "_features", 
                 "max_island_count", "max_island_size", "_weights", "max_pool_size", "random_const_range")
     def __init__(self, G, feature_names=None, label_name="y", max_population_size=5000, max_expression_size = 5, max_island_count=500, 
-                max_island_size = False, max_pool_size = 15, random_const_range=(0,1)):
+                max_island_size = False, max_pool_size = 15, random_const_range=(0,1), operators=None, functions=None):
         """- feature_names: A list containing the names of every feature in X"""
         
         self.y = None
@@ -93,21 +93,33 @@ class SymbolicRegression():
             of list() and .keys() from _operators_func and _functions_func 
         having efficiency in mind """
         
-        self._operators = ["+", "-", "*", "/"] # "/"
-        self._functions = ["abs", "square", "cube", "quart", "cos", "sin",
+        # Operators
+        if operators is None:
+            self._operators = ["+", "-", "*", "/"] 
+            self._operators_func = {"+": lambda a,b: np.add(a,b), "-": lambda a,b: np.subtract(a,b),
+                                "*": lambda a,b: np.multiply(a, b), "/": lambda a,b: np.divide(a,b)}
+        else:
+            self._operators_func = operators
+            self._operators = list(operators.keys())
+
+        # Functions
+        if functions is None:
+            self._functions = ["abs", "square", "cube", "quart", "cos", "sin",
                         "tan", "tanh", "exp", "sqrt", "log"] # "max", "min"
+            self._functions_func = {"abs": lambda a: np.abs(a), "exp": lambda a: np.exp(a), "square": lambda a: a**2,
+                            "cube": lambda a: a**3, "quart": lambda a: a**4, "cos": lambda a: np.cos(a),
+                            "sin": lambda a: np.sin(a), "tan": lambda a: np.tan(a), "tanh": lambda a: np.tanh(a),
+                            "sqrt": lambda a: np.sqrt(a), "log": lambda a: np.log(a)}
+        else:
+            self._functions_func = functions
+            self._functions = list(functions.keys())
+
             
         self._options = {"operator": lambda: choice(self._operators), "function": lambda: choice(self._functions),
                         "feature": lambda: choice(self._feature_names),
                         "constant": lambda: round(uniform(self.random_const_range[0],self.random_const_range[1]), 3)}
         
-        # Its better if this is here, instead of having a copy of everything in each tree
-        self._operators_func = {"+": lambda a,b: np.add(a,b), "-": lambda a,b: np.subtract(a,b),
-                                "*": lambda a,b: np.multiply(a, b), "/": lambda a,b: np.divide(a,b)}
-        self._functions_func = {"abs": lambda a: np.abs(a), "exp": lambda a: np.exp(a), "square": lambda a: a**2,
-                            "cube": lambda a: a**3, "quart": lambda a: a**4, "cos": lambda a: np.cos(a),
-                            "sin": lambda a: np.sin(a), "tan": lambda a: np.tan(a), "tanh": lambda a: np.tanh(a),
-                            "sqrt": lambda a: np.sqrt(a), "log": lambda a: np.log(a)}
+        
     
         self._weights = {
             "+": 1, "-": 1, "*": 2, "/": 2,
