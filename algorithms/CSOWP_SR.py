@@ -105,11 +105,11 @@ class SymbolicRegression():
         # Functions
         if functions is None:
             self._functions = ["abs", "square", "cube", "quart", "cos", "sin",
-                        "tan", "tanh", "exp", "sqrt", "log"] # "max", "min"
+                        "tan", "tanh", "exp", "sqrt", "log", "exp"] # "max", "min"
             self._functions_func = {"abs": lambda a: np.abs(a), "exp": lambda a: np.exp(a), "square": lambda a: a**2,
                             "cube": lambda a: a**3, "quart": lambda a: a**4, "cos": lambda a: np.cos(a),
                             "sin": lambda a: np.sin(a), "tan": lambda a: np.tan(a), "tanh": lambda a: np.tanh(a),
-                            "sqrt": lambda a: np.sqrt(a), "log": lambda a: np.log(a)}
+                            "sqrt": lambda a: np.sqrt(a), "log": lambda a: np.log(a), "exp": lambda a: np.exp(a)}
         else:
             self._functions_func = functions
             self._functions = list(functions.keys())
