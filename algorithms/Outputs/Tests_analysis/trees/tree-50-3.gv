@@ -8,16 +8,14 @@ digraph{
 # Nodes #
 #########
 
-"tanh(*(Integer(2), Symbol(x)))_()" ["color"="black", "label"="tanh", "shape"="ellipse"];
-"*(Integer(2), Symbol(x))_(0,)" ["color"="black", "label"="*", "shape"="ellipse"];
-"Integer(2)_(0, 0)" ["color"="black", "label"="2", "shape"="ellipse"];
-"Symbol(x)_(0, 1)" ["color"="black", "label"="x", "shape"="ellipse"];
+"Pow(Symbol(x), Half())_()" ["color"="black", "label"="Pow", "shape"="ellipse"];
+"Symbol(x)_(0,)" ["color"="black", "label"="x", "shape"="ellipse"];
+"Half()_(1,)" ["color"="black", "label"="1/2", "shape"="ellipse"];
 
 #########
 # Edges #
 #########
 
-"tanh(*(Integer(2), Symbol(x)))_()" -> "*(Integer(2), Symbol(x))_(0,)";
-"*(Integer(2), Symbol(x))_(0,)" -> "Integer(2)_(0, 0)";
-"*(Integer(2), Symbol(x))_(0,)" -> "Symbol(x)_(0, 1)";
+"Pow(Symbol(x), Half())_()" -> "Symbol(x)_(0,)";
+"Pow(Symbol(x), Half())_()" -> "Half()_(1,)";
 }

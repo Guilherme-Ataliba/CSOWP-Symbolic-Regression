@@ -25,7 +25,7 @@ def testAlgorithm(func, x_range, n_points, dir_path, population, generations,
         raise OSError("File exists")
     else:
         with open(dir_path + "/results.csv", "w") as file:
-            file.write("fitness_score,population,generations,training_time\n")
+            file.write("fitness_score,population,generations,training_time,i_run\n")
 
 
     # Defining the data ================================
@@ -67,10 +67,10 @@ def testAlgorithm(func, x_range, n_points, dir_path, population, generations,
         # graph = output_AEG.sexp.visualize_tree()
         # graph.render(dir_path + f"/trees/tree-{population}", format="svg")
 
-        with open(dir_path + f"/trees/tree-{population}-{generations}", "wb") as file:
+        with open(dir_path + f"/trees/tree-{population}-{generations}-{i}", "wb") as file:
             pickle.dump(output_AEG.sexp, file)
 
         with open(dir_path + "/results.csv", "a") as file:
-            file.write(f"{SR.fitness_score(output_AEG)},{population},{generations},{end_time - start_time}\n")
+            file.write(f"{SR.fitness_score(output_AEG)},{population},{generations},{end_time - start_time},{i}\n")
     
-    return originX, originy, SR._operators, SR._functions
+    return originX, originy, SR._operators, SR._functions   
