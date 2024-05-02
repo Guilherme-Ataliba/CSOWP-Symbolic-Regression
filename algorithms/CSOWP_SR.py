@@ -71,9 +71,10 @@ class SymbolicRegression():
     
     __slots__ = ("X", "y", "G", "_feature_names", "label_name", "max_population_size", "max_expression_size",
                 "_operators", "_functions", "_options", "_operators_func", "_functions_func", "_features", 
-                "max_island_count", "max_island_size", "_weights", "max_pool_size", "random_const_range")
+                "max_island_count", "max_island_size", "_weights", "max_pool_size", "random_const_range",
+                "_mult_tree", "_add_tree", "_linear_tree")
     def __init__(self, G, feature_names=None, label_name="y", max_population_size=5000, max_expression_size = 5, max_island_count=500, 
-                max_island_size = False, max_pool_size = 15, random_const_range=(0,1), operators=None, functions=None):
+                max_island_size = False, max_pool_size = 15, random_const_range=(0,1), operators=None, functions=None, weights=None):
         """- feature_names: A list containing the names of every feature in X"""
         
         self.y = None
@@ -127,6 +128,29 @@ class SymbolicRegression():
             "log": 4, "exp": 4, "cos": 5, "sin": 5, 
             "tan": 6, "tanh": 6, "abs": 1
         }
+        if weights is not None:
+            for i, j in weights.items():
+                self._weights[i] = j
+
+
+        # Linear Transform Trees
+        self._mult_tree = ExpressionTree()
+        p = self._mult_tree.add_root("*")
+        self._mult_tree.add_left(p, "a")
+        self._mult_tree.add_right(p, "x")
+
+        self._add_tree = ExpressionTree()
+        p = self._add_tree.add_root("+")
+        self._add_tree.add_left(p, "a")
+        self._add_tree.add_right(p, "x")
+
+        self._linear_tree = ExpressionTree()
+        p = self._linear_tree.add_root("+")
+        self._linear_tree.add_right(p, "a")
+        p = self._linear_tree.add_left(p, "*")
+        self._linear_tree.add_left(p, "b")
+        self._linear_tree.add_right(p, "x")
+
         
     def fit(self, X, y, feature_names=None, label_name="y"):
         if type(X) != np.ndarray:
@@ -197,86 +221,6 @@ class SymbolicRegression():
                 tree.replace(p, choice(self._functions), "function")
                 
         return tree
-
-#     def mutateSExp(self, me):
-#         """mutateSExp randomly alters an input s-expression by replacing a randomly selected sub expression 
-#         with a new randomly grown sub expression"""
-        
-#         copied = me.copy_tree(me.root())
-#         L = len(me)
-#         n_steps = randint(0, L)
-        
-#         for c, p in enumerate(copied.inorder()):
-#             if c == n_steps:
-                
-#                 if not copied.is_leaf(p):
-#                     copied.replace(p, self._options[p.element_type()](), p.element_type())
-                    
-#                 else:
-#                     random_number = randint(0,2)                    
-#                     if random_number == 0:
-#                         copied.replace(p, self._options[p.element_type()](), p.element_type())
-
-#                     elif random_number == 1:
-#                         size = randint(1, 2)
-#                         subtree = self.generate_expr(size)
-                        
-#                         copied.attach_subtree(p,subtree)
-                    
-#                     elif random_number == 2:
-#                         parent = copied.parent(p)
-#                         e_type = parent.element_type()
-#                         copied.delete(p)
-                        
-#                         if e_type == "fuction": # if the parent was function becomes feature or constant
-#                             if randint(0,1):
-#                                 copied.replace(parent, choice(self._feature_names), "feature")
-#                             else:
-#                                 copied.replace(parent, uniform(0,1), "constant")
-#                         else: # can only be operator
-#                             copied.replace(parent, choice(self._functions), "function")
-        
-#                 break        
-#         return copied
-    
-    
-#     def crossoverSExp(self, mom, dad):
-#         """crossoverSExp randomly alters a mom input s-expression by replacing a randomly selected sub expression
-#         in mom with a randomly selected sub expression from dad."""
-        
-#         """!!!!!!!!!!Just like in mutation, must implent types of subtrees that are possible to get from father, and for each type
-#         do a specific operation in mom"""
-        
-#         dad = dad.copy_tree(dad.root())
-#         mom = mom.copy_tree(mom.root())
-#         Ld = len(dad)
-#         Lm = len(mom)
-#         n = randint(0, Ld-1)
-#         m = randint(0, Lm-1)
-        
-#         # getting father sub expression
-#         for c, p in enumerate(dad.inorder()):
-#             if c == n:
-#                 sub_expression = dad.copy_tree(p)
-#                 break
-        
-#         for c, p in enumerate(mom.inorder()):
-#             if (c >= m) and (mom.is_leaf(p)):
-#                 mom.attach_subtree(p, sub_expression)
-#                 break
-        
-#         return mom
-    
-#     def insertLambda(self, population, lamb):
-#         """Inserts the specified lambda into the specified population unordered
-#         population: Numpy array
-#         lambda: Expression tree
-#         """
-#         if len(population) <= 0:
-#             population = np.array([])
-        
-#         population = np.append(population, lamb)
-#         return population
     
     def evaluate_tree(self, tree):     
         saida = np.array([])
@@ -533,6 +477,90 @@ class SymbolicRegression():
         return population
                 
 
+    # def mutateSExp(self, me: AEG) -> AEG:
+    #     """mutateSExp randomly alters an input s-expression by replacing a randomly selected sub expression 
+    #     with a new randomly grown sub expression
+        
+    #     The new version is pretty much equal to the other. The only exception is the convertion back and forth to AEG"""
+        
+    #     copied = me.sexp.copy_tree(me.sexp.root())
+    #     L = len(copied)
+    #     n_steps = randint(0, L)
+        
+    #     for c, p in enumerate(copied.inorder()):
+    #         if c == n_steps:
+                
+    #             if not copied.is_leaf(p):
+    #                 random_number = randint(0,1)
+                    
+    #                 # attach subtree above
+    #                 if random_number == 0:
+    #                     parent = copied.parent(p)
+    #                     new_subtree = self.generate_expr(1)
+                        
+    #                     left_most_element = next(new_subtree.inorder())
+    #                     if new_subtree.is_root(left_most_element):
+    #                         left_most_element = next(new_subtree.postorder())
+                        
+    #                     left_most_parent = new_subtree.parent(left_most_element)
+    #                     new_subtree.delete(left_most_element)
+                        
+    #                     if copied.is_root(p):
+    #                         left_most_parent.Node._left = copied.root().Node
+    #                         copied.root().Node._parent = left_most_parent.Node
+    #                         copied._root = new_subtree.root().Node
+                            
+    #                     else:
+    #                         copied_parent = copied.parent(p)
+    #                         if copied.is_left(p):
+    #                             copied_parent.Node._left = new_subtree._root
+    #                         else:
+    #                             copied_parent.Node._right = new_subtree._root
+                            
+    #                         left_most_parent.Node._left = p.Node
+    #                         p.Node._parent = left_most_parent.Node
+    #                         new_subtree._root._parent = copied_parent.Node
+                            
+                            
+                    
+    #                 # Change by the same type
+    #                 else:    
+    #                     copied.replace(p, self._options[p.element_type()](), p.element_type())
+                    
+    #             # its a leaf
+    #             else:
+    #                 random_number = randint(0,2)                    
+                    
+    #                 # Change by the same time
+    #                 if random_number == 0:  
+    #                     copied.replace(p, self._options[p.element_type()](), p.element_type())
+
+    #                 # Attach a random subtree
+    #                 elif random_number == 1:
+    #                     size = randint(1, 2)
+    #                     subtree = self.generate_expr(size)
+                        
+    #                     copied.attach_subtree(p,subtree)
+                    
+    #                 # Delete the node
+    #                 elif random_number == 2:
+    #                     parent = copied.parent(p)
+    #                     e_type = parent.element_type()
+    #                     copied.delete(p)
+                        
+    #                     if e_type == "function": # if the parent was function becomes feature or constant
+    #                         if randint(0,1):
+    #                             copied.replace(parent, choice(self._feature_names), "feature")
+    #                         else:
+    #                             copied.replace(parent, uniform(self.random_const_range[0], self.random_const_range[1]), "constant")
+    #                     else: # can only be operator
+    #                         copied.replace(parent, choice(self._functions), "function")
+        
+    #             break
+            
+    #     copied = self._convert_to_AEG(copied)
+    #     return copied
+
     def mutateSExp(self, me: AEG) -> AEG:
         """mutateSExp randomly alters an input s-expression by replacing a randomly selected sub expression 
         with a new randomly grown sub expression
@@ -546,7 +574,58 @@ class SymbolicRegression():
         for c, p in enumerate(copied.inorder()):
             if c == n_steps:
                 
-                if not copied.is_leaf(p):
+                pick_mutation = randint(0,1)
+                transform_flag = False
+
+                if p.element_type() in ["feature", "function"] and pick_mutation == 0:
+                    transform_flag = True
+                    # Linear Transform
+                    linear_choice = randint(0, 2)
+                    # Add Tree
+                    if linear_choice == 0:
+                        print("add")
+                        new_subtree = self._add_tree.copy_tree(self._add_tree.root())
+                        new_subtree.root().Node._left._element = self._options["constant"]()
+                        right_most_element = new_subtree.right(new_subtree.root())
+                    
+                    # Multi Tree
+                    elif linear_choice == 1:
+                        print("mult")
+                        new_subtree = self._mult_tree.copy_tree(self._mult_tree.root())
+                        new_subtree.root().Node._left._element = self._options["constant"]()
+                        right_most_element = new_subtree.right(new_subtree.root())
+                    
+                    # Linear Transform Tree
+                    elif linear_choice == 2:
+                        print("linear")
+                        new_subtree = self._linear_tree.copy_tree(self._linear_tree.root())
+                        root = new_subtree.root().Node
+                        root._right._element = self._options["constant"]()
+                        root._left._left._element = self._options["constant"]()
+                        right_most_element = new_subtree.right(new_subtree.left(new_subtree.root()))
+
+                    parent = copied.parent(p)
+                    right_most_parent = new_subtree.parent(right_most_element)
+                    new_subtree.delete(right_most_element)
+                    
+                    if copied.is_root(p):
+                        right_most_parent.Node._right = copied.root().Node
+                        copied.root().Node._parent = right_most_parent.Node
+                        copied._root = new_subtree.root().Node
+                        
+                    else:
+                        copied_parent = copied.parent(p)
+                        if copied.is_left(p):
+                            copied_parent.Node._left = new_subtree._root
+                        else:
+                            copied_parent.Node._right = new_subtree._root
+                        
+                        right_most_parent.Node._right = p.Node
+                        p.Node._parent = right_most_parent.Node
+                        new_subtree._root._parent = copied_parent.Node
+
+
+                if not copied.is_leaf(p) and transform_flag==False:
                     random_number = randint(0,1)
                     
                     # attach subtree above
@@ -584,15 +663,11 @@ class SymbolicRegression():
                         copied.replace(p, self._options[p.element_type()](), p.element_type())
                     
                 # its a leaf
-                else:
-                    random_number = randint(0,2)                    
-                    
-                    # Change by the same time
-                    if random_number == 0:  
-                        copied.replace(p, self._options[p.element_type()](), p.element_type())
+                elif copied.is_leaf(p) and transform_flag==False:
+                    random_number = randint(1,2)                    
 
                     # Attach a random subtree
-                    elif random_number == 1:
+                    if random_number == 1:
                         size = randint(1, 2)
                         subtree = self.generate_expr(size)
                         

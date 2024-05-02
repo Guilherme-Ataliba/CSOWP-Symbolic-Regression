@@ -12,7 +12,7 @@ os.environ["PATH"] += os.pathsep + 'D:/Program Files (x86)/Graphviz-10.0.1-win64
 def testAlgorithm(func, x_range, n_points, dir_path, population, generations, 
                   max_expression_size, normalize=False, const_range=(0,1),
                   normalize_range=(0,1), ignore_warning=True, overwrite=False,
-                  n_runs=1, operators=None, functions=None):
+                  n_runs=1, operators=None, functions=None, weights=None):
 
     # Initial Definitions ==============================
     if ignore_warning:
@@ -46,7 +46,7 @@ def testAlgorithm(func, x_range, n_points, dir_path, population, generations,
         print(f"-=-=-=-=-=-=-=-= Training for population {population} and generation {generations} - {dir_path[dir_path.find('/')+1:]} =-=-=-=-=-=-=-=-")
         SR = SymbolicRegression(generations, max_expression_size, max_population_size=population,
                                 max_island_count=int(population/10), random_const_range=const_range,
-                                operators=operators, functions=functions)
+                                operators=operators, functions=functions, weights=weights)
         SR.fit(np.c_[X], y, feature_names=["x"])
         
         start_time = time()
