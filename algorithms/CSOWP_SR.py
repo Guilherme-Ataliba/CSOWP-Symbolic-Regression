@@ -583,21 +583,21 @@ class SymbolicRegression():
                     linear_choice = randint(0, 2)
                     # Add Tree
                     if linear_choice == 0:
-                        print("add")
+                        
                         new_subtree = self._add_tree.copy_tree(self._add_tree.root())
                         new_subtree.root().Node._left._element = self._options["constant"]()
                         right_most_element = new_subtree.right(new_subtree.root())
                     
                     # Multi Tree
                     elif linear_choice == 1:
-                        print("mult")
+                        
                         new_subtree = self._mult_tree.copy_tree(self._mult_tree.root())
                         new_subtree.root().Node._left._element = self._options["constant"]()
                         right_most_element = new_subtree.right(new_subtree.root())
                     
                     # Linear Transform Tree
                     elif linear_choice == 2:
-                        print("linear")
+                        
                         new_subtree = self._linear_tree.copy_tree(self._linear_tree.root())
                         root = new_subtree.root().Node
                         root._right._element = self._options["constant"]()
@@ -987,7 +987,7 @@ class SymbolicRegression():
                 out_population = self.insertLambda(out_population, lamb)
                 dad = in_population[p] # every one gets crossed over (gets to be a dad)
                 
-                # Cross over partner must be from the same island
+                # Cross over partner must be from the same island 
                 K = dad.sexp.island
                 i = randint(0, len(islands[K])-1)
                 mom = islands[K][i]   # Getting a random tree from the same island as dad
