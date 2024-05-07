@@ -72,10 +72,14 @@ class SymbolicRegression():
     __slots__ = ("X", "y", "G", "_feature_names", "label_name", "max_population_size", "max_expression_size",
                 "_operators", "_functions", "_options", "_operators_func", "_functions_func", "_features", 
                 "max_island_count", "max_island_size", "_weights", "max_pool_size", "random_const_range",
-                "_mult_tree", "_add_tree", "_linear_tree")
-    def __init__(self, G, feature_names=None, label_name="y", max_population_size=5000, max_expression_size = 5, max_island_count=500, 
-                max_island_size = False, max_pool_size = 15, random_const_range=(0,1), operators=None, functions=None, weights=None):
-        """- feature_names: A list containing the names of every feature in X"""
+                "_mult_tree", "_add_tree", "_linear_tree", "island_interval")
+    def __init__(self, G, feature_names=None, label_name="y", max_population_size=5000, max_expression_size = 5, max_island_count=500,
+                max_pool_size = 15, random_const_range=(0,1), operators=None, functions=None, weights=None,
+                island_interval=None):
+        """
+            - feature_names: A list containing the names of every feature in X
+            - island_interval: (islands bellow the current one, islands above the current one)
+        """
         
         self.y = None
         self.G = G
@@ -84,11 +88,12 @@ class SymbolicRegression():
         self.max_pool_size = max_pool_size
         self.max_expression_size = max_expression_size
         self.max_island_count = max_island_count
-        if not max_island_size: 
-            self.max_island_size = int(max_population_size / max_island_count)
+        self.max_island_size = int(max_population_size / max_island_count)
         
         self.random_const_range = random_const_range
 
+        if island_interval == None:
+            island_interval = (1,0)
         
         """ I've chosen to let _operatos and _functions here to reduce call 
             of list() and .keys() from _operators_func and _functions_func 
@@ -989,7 +994,11 @@ class SymbolicRegression():
                 
                 # Cross over partner must be from the same island 
                 K = dad.sexp.island
-                i = randint(0, len(islands[K])-1)
+                K = np.random.randint(K-self.island_interval[0], K+self.island_interval[1])
+                if K < 0: K=0
+                if K > self.max_island_count: K = self.max_island_count-1
+
+                i = randint(0, len(islands[K])-1)  # Choosing a random individual from island K
                 mom = islands[K][i]   # Getting a random tree from the same island as dad
                 lamb = self.crossoverSExp(dad, mom)
                 out_population = self.insertLambda(out_population, lamb)
