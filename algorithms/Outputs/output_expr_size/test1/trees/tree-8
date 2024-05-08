@@ -1,0 +1,15 @@
+digraph {
+	0 [label=sin]
+	1 [label="+"]
+	0 -> 1
+	2 [label=sin]
+	1 -> 2
+	5 [label=abs]
+	1 -> 5
+	3 [label=cube]
+	2 -> 3
+	4 [label=x]
+	3 -> 4
+	6 [label=x]
+	5 -> 6
+}

@@ -1,0 +1,19 @@
+digraph{
+
+# Graph style
+"ordering"="out"
+"rankdir"="TD"
+
+#########
+# Nodes #
+#########
+
+"square(Float((1, 799388933858263, -50, 50), 53))_()" ["color"="black", "label"="square", "shape"="ellipse"];
+"Float((1, 799388933858263, -50, 50), 53)_(0,)" ["color"="black", "label"="-0.710", "shape"="ellipse"];
+
+#########
+# Edges #
+#########
+
+"square(Float((1, 799388933858263, -50, 50), 53))_()" -> "Float((1, 799388933858263, -50, 50), 53)_(0,)";
+}

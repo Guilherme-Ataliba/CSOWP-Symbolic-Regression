@@ -1,0 +1,21 @@
+digraph{
+
+# Graph style
+"ordering"="out"
+"rankdir"="TD"
+
+#########
+# Nodes #
+#########
+
+"Pow(Symbol(x), Half())_()" ["color"="black", "label"="Pow", "shape"="ellipse"];
+"Symbol(x)_(0,)" ["color"="black", "label"="x", "shape"="ellipse"];
+"Half()_(1,)" ["color"="black", "label"="1/2", "shape"="ellipse"];
+
+#########
+# Edges #
+#########
+
+"Pow(Symbol(x), Half())_()" -> "Symbol(x)_(0,)";
+"Pow(Symbol(x), Half())_()" -> "Half()_(1,)";
+}

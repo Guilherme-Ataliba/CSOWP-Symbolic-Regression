@@ -1,0 +1,25 @@
+digraph{
+
+# Graph style
+"ordering"="out"
+"rankdir"="TD"
+
+#########
+# Nodes #
+#########
+
+"exp(Pow(log(Symbol(x)), Integer(3)))_()" ["color"="black", "label"="exp", "shape"="ellipse"];
+"Pow(log(Symbol(x)), Integer(3))_(0,)" ["color"="black", "label"="Pow", "shape"="ellipse"];
+"log(Symbol(x))_(0, 0)" ["color"="black", "label"="log", "shape"="ellipse"];
+"Symbol(x)_(0, 0, 0)" ["color"="black", "label"="x", "shape"="ellipse"];
+"Integer(3)_(0, 1)" ["color"="black", "label"="3", "shape"="ellipse"];
+
+#########
+# Edges #
+#########
+
+"exp(Pow(log(Symbol(x)), Integer(3)))_()" -> "Pow(log(Symbol(x)), Integer(3))_(0,)";
+"Pow(log(Symbol(x)), Integer(3))_(0,)" -> "log(Symbol(x))_(0, 0)";
+"Pow(log(Symbol(x)), Integer(3))_(0,)" -> "Integer(3)_(0, 1)";
+"log(Symbol(x))_(0, 0)" -> "Symbol(x)_(0, 0, 0)";
+}

@@ -1,0 +1,7 @@
+digraph {
+	0 [label=log]
+	1 [label=log]
+	0 -> 1
+	2 [label=3.25]
+	1 -> 2
+}

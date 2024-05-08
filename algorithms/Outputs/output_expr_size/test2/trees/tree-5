@@ -1,0 +1,13 @@
+digraph {
+	0 [label=quart]
+	1 [label=sin]
+	0 -> 1
+	2 [label="+"]
+	1 -> 2
+	3 [label=x]
+	2 -> 3
+	4 [label=abs]
+	2 -> 4
+	5 [label=x]
+	4 -> 5
+}

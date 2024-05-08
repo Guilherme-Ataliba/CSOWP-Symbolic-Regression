@@ -1,0 +1,13 @@
+digraph {
+	0 [label="*"]
+	1 [label=2.891]
+	0 -> 1
+	2 [label="+"]
+	0 -> 2
+	3 [label=log]
+	2 -> 3
+	5 [label=x]
+	2 -> 5
+	4 [label=2.387]
+	3 -> 4
+}

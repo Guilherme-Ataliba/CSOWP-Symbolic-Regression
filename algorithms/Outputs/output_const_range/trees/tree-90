@@ -1,0 +1,7 @@
+digraph {
+	0 [label=abs]
+	1 [label=sqrt]
+	0 -> 1
+	2 [label=x]
+	1 -> 2
+}

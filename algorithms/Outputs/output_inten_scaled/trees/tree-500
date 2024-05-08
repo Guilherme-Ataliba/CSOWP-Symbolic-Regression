@@ -1,0 +1,11 @@
+digraph {
+	0 [label=sqrt]
+	1 [label=square]
+	0 -> 1
+	2 [label="*"]
+	1 -> 2
+	3 [label=-1.251]
+	2 -> 3
+	4 [label=x]
+	2 -> 4
+}

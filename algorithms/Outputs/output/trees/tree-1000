@@ -1,0 +1,11 @@
+digraph {
+	0 [label=log]
+	1 [label="+"]
+	0 -> 1
+	2 [label=quart]
+	1 -> 2
+	4 [label=0.298]
+	1 -> 4
+	3 [label=x]
+	2 -> 3
+}

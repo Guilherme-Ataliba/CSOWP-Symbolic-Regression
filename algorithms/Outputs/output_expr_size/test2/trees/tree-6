@@ -1,0 +1,21 @@
+digraph {
+	0 [label=sqrt]
+	1 [label=exp]
+	0 -> 1
+	2 [label="*"]
+	1 -> 2
+	3 [label="/"]
+	2 -> 3
+	6 [label="-"]
+	2 -> 6
+	4 [label=x]
+	3 -> 4
+	5 [label=3.35]
+	3 -> 5
+	7 [label=log]
+	6 -> 7
+	9 [label=x]
+	6 -> 9
+	8 [label=x]
+	7 -> 8
+}

@@ -1,0 +1,17 @@
+digraph {
+	0 [label=exp]
+	1 [label=cube]
+	0 -> 1
+	2 [label=log]
+	1 -> 2
+	3 [label="+"]
+	2 -> 3
+	4 [label=x]
+	3 -> 4
+	5 [label="-"]
+	3 -> 5
+	6 [label=3.642]
+	5 -> 6
+	7 [label=x]
+	5 -> 7
+}

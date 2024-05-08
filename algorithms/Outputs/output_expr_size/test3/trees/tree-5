@@ -1,0 +1,13 @@
+digraph {
+	0 [label=tanh]
+	1 [label="*"]
+	0 -> 1
+	2 [label=square]
+	1 -> 2
+	5 [label=4.034]
+	1 -> 5
+	3 [label=abs]
+	2 -> 3
+	4 [label=x]
+	3 -> 4
+}
