@@ -994,7 +994,7 @@ class SymbolicRegression():
                 
                 # Cross over partner must be from the same island 
                 K = dad.sexp.island
-                K = np.random.randint(K-self.island_interval[0], K+self.island_interval[1])
+                K = np.random.randint(K-self.island_interval[0], K+self.island_interval[1]+1)
                 if K < 0: K=0
                 if K > self.max_island_count: K = self.max_island_count-1
 
