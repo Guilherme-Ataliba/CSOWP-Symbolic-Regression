@@ -1,2 +1,2 @@
 # [WIP] CSOWP SR - Constant Swarm  with Operator Weighted Pruning
-Esse é o método desenvolvido como base no artigo [ABaselineSymbolicRegressionAlgorithm.pdf](https://github.com/Guilherme-Ataliba/Phase_Three-SR/files/14030691/ABaselineSymbolicRegressionAlgorithm.pdf). 
+This is a Symbolic Regression project that is currently being developed. Symbolic regressions consists of an "general non-linear regression", in the sense that it searches for a symbolic expression to fit a dataset without the necessity to pre-define the function form beforehand. This method searches the infinite space of combinations between operators, functions, features and parameters utilizing genetic algorithms to find an expression that best fits the input data. 
