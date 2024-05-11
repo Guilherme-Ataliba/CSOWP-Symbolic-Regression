@@ -93,7 +93,9 @@ class SymbolicRegression():
         self.random_const_range = random_const_range
 
         if island_interval == None:
-            island_interval = (1,0)
+            self.island_interval = (1,0)
+        else:
+            self.island_interval = island_interval
         
         """ I've chosen to let _operatos and _functions here to reduce call 
             of list() and .keys() from _operators_func and _functions_func 
