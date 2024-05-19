@@ -974,6 +974,7 @@ class SymbolicRegression():
         
         
         for g in range(0, self.G): # Main evolution loop
+            print("iniciou")
             # print("g:", g)
             P = len(in_population)
             # print(in_population)
@@ -995,10 +996,15 @@ class SymbolicRegression():
                 dad = in_population[p] # every one gets crossed over (gets to be a dad)
                 
                 # Cross over partner must be from the same island 
-                K = dad.sexp.island
-                K = np.random.randint(K-self.island_interval[0], K+self.island_interval[1]+1)
+                K_original = dad.sexp.island
+                K = np.random.randint(K_original-self.island_interval[0], K_original+self.island_interval[1]+1)
+                
                 if K < 0: K=0
-                if K > self.max_island_count: K = self.max_island_count-1
+                if K >= len(islands): K = len(islands)-1
+
+                if type(islands[K]) is int:
+                    K = K_original
+                
 
                 i = randint(0, len(islands[K])-1)  # Choosing a random individual from island K
                 mom = islands[K][i]   # Getting a random tree from the same island as dad
