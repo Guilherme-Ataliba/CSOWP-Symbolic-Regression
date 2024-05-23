@@ -73,8 +73,8 @@ class SymbolicRegression():
                 "_operators", "_functions", "_options", "_operators_func", "_functions_func", "_features", 
                 "max_island_count", "max_island_size", "_weights", "max_pool_size", "random_const_range",
                 "_mult_tree", "_add_tree", "_linear_tree", "island_interval")
-    def __init__(self, G, feature_names=None, label_name="y", max_population_size=5000, max_expression_size = 5, max_island_count=500,
-                max_pool_size = 15, random_const_range=(0,1), operators=None, functions=None, weights=None,
+    def __init__(self, G, feature_names=None, label_name="y", max_population_size=5000, max_expression_size = 5, max_island_count=500, 
+                max_island_size=None, max_pool_size = 15, random_const_range=(0,1), operators=None, functions=None, weights=None,
                 island_interval=None):
         """
             - feature_names: A list containing the names of every feature in X
@@ -88,7 +88,11 @@ class SymbolicRegression():
         self.max_pool_size = max_pool_size
         self.max_expression_size = max_expression_size
         self.max_island_count = max_island_count
-        self.max_island_size = int(max_population_size / max_island_count)
+        
+        if max_island_size is None:
+            self.max_island_size = int(max_population_size / max_island_count)
+        else:
+            self.max_island_size = max_island_size
         
         self.random_const_range = random_const_range
 
@@ -1012,5 +1016,6 @@ class SymbolicRegression():
                 out_population = self.insertLambda(out_population, lamb)
             
             champ, islands, in_population = self.populationPruning(in_population, out_population, islands)
+
         return champ
         
