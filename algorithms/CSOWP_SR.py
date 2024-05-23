@@ -5,6 +5,7 @@ import pandas as pd
 import numpy as np
 from random import randint, choice, uniform
 from ExpressionTree import *
+from scipy.optimize import curve_fit
 
 class Particle():
     "v: velocity vector"
@@ -72,10 +73,10 @@ class SymbolicRegression():
     __slots__ = ("X", "y", "G", "_feature_names", "label_name", "max_population_size", "max_expression_size",
                 "_operators", "_functions", "_options", "_operators_func", "_functions_func", "_features", 
                 "max_island_count", "max_island_size", "_weights", "max_pool_size", "random_const_range",
-                "_mult_tree", "_add_tree", "_linear_tree", "island_interval")
+                "_mult_tree", "_add_tree", "_linear_tree", "island_interval", "optimization_kind")
     def __init__(self, G, feature_names=None, label_name="y", max_population_size=5000, max_expression_size = 5, max_island_count=500, 
                 max_island_size=None, max_pool_size = 15, random_const_range=(0,1), operators=None, functions=None, weights=None,
-                island_interval=None):
+                island_interval=None, optimization_kind="PSO"):
         """
             - feature_names: A list containing the names of every feature in X
             - island_interval: (islands bellow the current one, islands above the current one)
@@ -88,7 +89,8 @@ class SymbolicRegression():
         self.max_pool_size = max_pool_size
         self.max_expression_size = max_expression_size
         self.max_island_count = max_island_count
-        
+        self.optimization_kind = optimization_kind
+
         if max_island_size is None:
             self.max_island_size = int(max_population_size / max_island_count)
         else:
@@ -100,6 +102,7 @@ class SymbolicRegression():
             self.island_interval = (1,0)
         else:
             self.island_interval = island_interval
+        
         
         """ I've chosen to let _operatos and _functions here to reduce call 
             of list() and .keys() from _operators_func and _functions_func 
@@ -738,7 +741,34 @@ class SymbolicRegression():
     def _generate_random_velocity(self, dimensions, max_speed = 1.0):
         return np.random.uniform(0, max_speed, dimensions)
         
-    def optimizeConstants(self, me: AEG, g: int, Ic: int):
+    #-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+    #                  Constant Optimization
+    #-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+
+    def optimizeConstants(self, me:AEG, g: int, Ic: int):
+        
+        if self.optimization_kind == "PSO":
+            r_me, r_Ic = self.PSO(me, g, Ic)
+            return r_me, r_Ic
+        
+        if self.optimization_kind == "LS":
+            if len(me.pool) <= 0:
+                return me
+            
+            try:
+                params = curve_fit(me.sexp.toFunc(), self.X, self.y, me.pool[-1])
+
+                me.pool[0] = params
+                me.c = me.pool[0]
+                me.sexp = self._convert_to_ExpTree(me)
+            except:
+                params = me.pool[0]
+            
+            return me, 0
+
+        
+
+    def PSO(self, me: AEG, g: int, Ic: int):
         """
         Parameters: WL, WG, WV, maxPoolSize
         Summary: Particle Swarm constant optimization optimizes a pool of vectors,
