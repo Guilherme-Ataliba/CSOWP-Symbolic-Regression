@@ -764,7 +764,7 @@ class SymbolicRegression():
                 me.c = me.pool[0]
                 me.sexp.fitness_score = self.fitness_score(me)
                 me.sexp = self._convert_to_ExpTree(me)
-            except:
+            except RuntimeError:
                 params = me.pool[0]
             
             return me, 0
@@ -775,7 +775,7 @@ class SymbolicRegression():
             if len(me.pool) <= 0:
                 return me
             
-            else:
+            try:
                 # Vector of random numbers
                 guess = np.random.uniform(low=self.random_const_range[0], 
                                           high=self.random_const_range[1],
@@ -787,6 +787,9 @@ class SymbolicRegression():
                 me.c = me.pool[0]
                 me.sexp.fitness_score = self.fitness_score(me)
                 me.sexp = self._convert_to_ExpTree(me)
+            
+            except RuntimeError:
+                params = me.pool[0]
             
             return me, 0
 
