@@ -5,7 +5,7 @@ import pandas as pd
 import numpy as np
 from random import randint, choice, uniform
 from ExpressionTree import *
-from scipy.optimize import curve_fit
+from scipy.optimize import curve_fit, differential_evolution
 
 class Particle():
     "v: velocity vector"
@@ -779,7 +779,7 @@ class SymbolicRegression():
                 # Vector of random numbers
                 guess = np.random.uniform(low=self.random_const_range[0], 
                                           high=self.random_const_range[1],
-                                          size=len(me.pool[0]))
+                                          size=len(me.pool[0].vector))
                 params = curve_fit(me.sexp.toFunc(), self.X, self.y, guess)
                 
                 me.pool.append(params)
@@ -791,9 +791,26 @@ class SymbolicRegression():
             return me, 0
 
         if self.optimization_kind == "differential_evolution":
-            raise NotImplementedError("Not implemented yet")
+            me = me.copy_AEG()
+            func = me.sexp.toFunc()
+            n_params = len(me.pool[0].vector)
 
+            def cost_function(params):
+                y_pred = func(self.X, *params)
+                return np.mean((self.y - y_pred)**2)
+            
+            bounds = [(self.random_const_range[0], self.random_const_range[1]) for _ in range(n_params)]
 
+            result = differential_evolution(cost_function, bounds)
+            best_params = result.x
+
+            me.pool.append(params)  
+            self.sort_pool_array(me)
+            me.c = me.pool[0]
+            me.sexp.fitness_score = self.fitness_score(me)
+            me.sexp = self._convert_to_ExpTree(me)            
+
+            return me, 0
         
 
     def PSO(self, me: AEG, g: int, Ic: int):
