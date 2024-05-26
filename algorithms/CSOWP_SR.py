@@ -757,7 +757,7 @@ class SymbolicRegression():
                 return me
             
             try:
-                params = curve_fit(me.sexp.toFunc(), self.X, self.y, me.pool[-1])
+                params = curve_fit(me.sexp.toFunc(self._operators, self._functions), self._features["x0"], self.y, me.pool[-1])
 
                 me.pool.append(params)
                 self.sort_pool_array(me)
@@ -780,7 +780,7 @@ class SymbolicRegression():
                 guess = np.random.uniform(low=self.random_const_range[0], 
                                           high=self.random_const_range[1],
                                           size=len(me.pool[0].vector))
-                params = curve_fit(me.sexp.toFunc(), self.X, self.y, guess)
+                params = curve_fit(me.sexp.toFunc(self._operators, self._functions), self._features["x0"], self.y, guess)
                 
                 me.pool.append(params)
                 self.sort_pool_array(me)
@@ -795,7 +795,7 @@ class SymbolicRegression():
 
         if self.optimization_kind == "differential_evolution":
             me = me.copy_AEG()
-            func = me.sexp.toFunc()
+            func = me.sexp.toFunc(self._operators, self._functions)
             n_params = len(me.pool[0].vector)
 
             def cost_function(params):
@@ -817,7 +817,7 @@ class SymbolicRegression():
         
         if self.optimization_kind == "dual_annealing":
             me = me.copy_AEG()
-            func = me.sexp.toFunc()
+            func = me.sexp.toFunc(self._operators, self._functions)
             n_params = len(me.pool[0].vector)
 
             def cost_function(params):
