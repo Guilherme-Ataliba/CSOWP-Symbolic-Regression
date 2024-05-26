@@ -746,25 +746,53 @@ class SymbolicRegression():
     #-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 
     def optimizeConstants(self, me:AEG, g: int, Ic: int):
-        
         if self.optimization_kind == "PSO":
             r_me, r_Ic = self.PSO(me, g, Ic)
             return r_me, r_Ic
         
         if self.optimization_kind == "LS":
+            me = me.copy_AEG()
+
             if len(me.pool) <= 0:
                 return me
             
             try:
                 params = curve_fit(me.sexp.toFunc(), self.X, self.y, me.pool[-1])
 
-                me.pool[0] = params
+                me.pool.append(params)
+                self.sort_pool_array(me)
                 me.c = me.pool[0]
+                me.sexp.fitness_score = self.fitness_score(me)
                 me.sexp = self._convert_to_ExpTree(me)
             except:
                 params = me.pool[0]
             
             return me, 0
+    
+        if self.optimization_kind == "random_LS":
+            me = me.copy_AEG()
+
+            if len(me.pool) <= 0:
+                return me
+            
+            else:
+                # Vector of random numbers
+                guess = np.random.uniform(low=self.random_const_range[0], 
+                                          high=self.random_const_range[1],
+                                          size=len(me.pool[0]))
+                params = curve_fit(me.sexp.toFunc(), self.X, self.y, guess)
+                
+                me.pool.append(params)
+                self.sort_pool_array(me)
+                me.c = me.pool[0]
+                me.sexp.fitness_score = self.fitness_score(me)
+                me.sexp = self._convert_to_ExpTree(me)
+            
+            return me, 0
+
+        if self.optimization_kind == "differential_evolution":
+            raise NotImplementedError("Not implemented yet")
+
 
         
 
@@ -1030,8 +1058,17 @@ class SymbolicRegression():
                 dad = in_population[p] # every one gets crossed over (gets to be a dad)
                 
                 # Cross over partner must be from the same island 
+                # if dad.sexp.island is None: 
+                #     # Have no ideia why this bug happens sometimes, some individuals get here without a defined island
+                #     print("empty dad island")
+                #     K_original = 0
+                # else:
                 K_original = dad.sexp.island
-                K = np.random.randint(K_original-self.island_interval[0], K_original+self.island_interval[1]+1)
+                try:
+                    K = np.random.randint(K_original-self.island_interval[0], K_original+self.island_interval[1]+1)
+                except:
+                    print(K_original, type(K_original), self.island_interval[0], type(self.island_interval[0]))
+                    raise NotImplementedError("Erro!")
                 
                 if K < 0: K=0
                 if K >= len(islands): K = len(islands)-1

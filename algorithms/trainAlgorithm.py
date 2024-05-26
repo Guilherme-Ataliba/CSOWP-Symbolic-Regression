@@ -40,7 +40,9 @@ def testAlgorithm(func, x_range, n_points, dir_path, population, generations,
         scaler = MinMaxScaler(normalize_range)
         X = scaler.fit_transform(np.c_[X])
         y = scaler.fit_transform(np.c_[y]).reshape(-1, )
-
+    else:
+        originX = X
+        originy = y
     
     # Training the model ===============================
     for i in range(n_runs):
@@ -49,7 +51,7 @@ def testAlgorithm(func, x_range, n_points, dir_path, population, generations,
                                 max_island_count=int(population/10), random_const_range=const_range,
                                 operators=operators, functions=functions, weights=weights,
                                 island_interval=island_interval, optimization_kind=optimization_kind)
-        SR.fit(np.c_[X], y, feature_names=["x"])
+        SR.fit(np.c_[X], y, feature_names=["x"])    
         
         start_time = time()
         output_AEG = SR.predict()
