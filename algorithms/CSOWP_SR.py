@@ -55,6 +55,40 @@ class AEG():
             new_AEG.pool.append(particle.copy_particle())
         
         return new_AEG
+    
+    def toFunc(self, operators, functions, features):
+        expr_string = self.aexp.toString(operators, functions)
+        expr_string = expr_string.replace("[", "").replace("]", "")
+
+        if len(self.pool) > 0:
+            n_params = len(self.pool[0].vector)
+            
+            params_dict = {}
+            for i in features:
+                feature = smp.symbols(f"{i}")
+                params_dict[f"{i}"] = feature
+            
+            for i in range(n_params):
+                feature = smp.symbols(f"c{i}")
+                params_dict[f"c{i}"] = feature
+        
+            print(params_dict)
+            print(expr_string)
+            smp_expr = smp.sympify(expr_string, locals=params_dict)
+        else:
+            smp_expr = smp.sympify(expr_string)
+
+        
+
+        symbols_list = params_dict.keys()
+
+        symbols_string = ""
+        for i in symbols_list:
+            symbols_string += f"{i}, "
+
+        symbols = smp.symbols(symbols_string)
+        
+        return smp.lambdify(symbols, smp_expr)
 
 
 class SymbolicRegression():
@@ -757,7 +791,7 @@ class SymbolicRegression():
                 return me
             
             try:
-                params = curve_fit(me.sexp.toFunc(self._operators, self._functions), self._features["x0"], self.y, me.pool[-1])
+                params = curve_fit(me.sexp.toFunc(self._operators, self._functions)[0], self._features[self._feature_names[0]], self.y, me.pool[-1])
 
                 me.pool.append(params)
                 self.sort_pool_array(me)
@@ -780,7 +814,7 @@ class SymbolicRegression():
                 guess = np.random.uniform(low=self.random_const_range[0], 
                                           high=self.random_const_range[1],
                                           size=len(me.pool[0].vector))
-                params = curve_fit(me.sexp.toFunc(self._operators, self._functions), self._features["x0"], self.y, guess)
+                params = curve_fit(me.sexp.toFunc(self._operators, self._functions)[0], self._features[self._feature_names[0]], self.y, guess)
                 
                 me.pool.append(params)
                 self.sort_pool_array(me)
