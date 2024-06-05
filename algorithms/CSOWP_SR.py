@@ -3,7 +3,7 @@ from typing import Any, List
 
 import pandas as pd
 import numpy as np
-from random import randint, choice, uniform
+from random import randint, choice, uniform, seed
 from ExpressionTree import *
 from scipy.optimize import curve_fit, differential_evolution, dual_annealing
 
@@ -56,8 +56,8 @@ class AEG():
         
         return new_AEG
     
-    def toFunc(self, operators, functions, features):
-        expr_string = self.aexp.toString(operators, functions)
+    def toFunc(self, operators, functions, features, custom_functions_dict={}):
+        expr_string = self.aexp.toString(operators, functions, custom_functions_dict=custom_functions_dict)
         expr_string = expr_string.replace("[", "").replace("]", "")
 
         if len(self.pool) > 0:
@@ -71,9 +71,9 @@ class AEG():
             for i in range(n_params):
                 feature = smp.symbols(f"c{i}")
                 params_dict[f"c{i}"] = feature
-        
-            print(params_dict)
-            print(expr_string)
+
+            # print(expr_string)
+            # print(params_dict)
             smp_expr = smp.sympify(expr_string, locals=params_dict)
         else:
             smp_expr = smp.sympify(expr_string)
@@ -107,10 +107,10 @@ class SymbolicRegression():
     __slots__ = ("X", "y", "G", "_feature_names", "label_name", "max_population_size", "max_expression_size",
                 "_operators", "_functions", "_options", "_operators_func", "_functions_func", "_features", 
                 "max_island_count", "max_island_size", "_weights", "max_pool_size", "random_const_range",
-                "_mult_tree", "_add_tree", "_linear_tree", "island_interval", "optimization_kind")
-    def __init__(self, G, feature_names=None, label_name="y", max_population_size=5000, max_expression_size = 5, max_island_count=500, 
+                "_mult_tree", "_add_tree", "_linear_tree", "island_interval", "optimization_kind", "custom_functions_dict")
+    def __init__(self, G, feature_names=None, label_name="y", max_population_size=5000, max_expression_size = 5, max_island_count=None, 
                 max_island_size=None, max_pool_size = 15, random_const_range=(0,1), operators=None, functions=None, weights=None,
-                island_interval=None, optimization_kind="PSO"):
+                island_interval=None, optimization_kind="PSO", custom_functions_dict={}):
         """
             - feature_names: A list containing the names of every feature in X
             - island_interval: (islands bellow the current one, islands above the current one)
@@ -122,11 +122,16 @@ class SymbolicRegression():
         self.max_population_size = max_population_size
         self.max_pool_size = max_pool_size
         self.max_expression_size = max_expression_size
-        self.max_island_count = max_island_count
         self.optimization_kind = optimization_kind
+        self.custom_functions_dict = custom_functions_dict
+
+        if max_island_count is None:
+            self.max_island_count = int(max_population_size/10)
+        else:
+            self.max_island_count = max_island_count
 
         if max_island_size is None:
-            self.max_island_size = int(max_population_size / max_island_count)
+            self.max_island_size = int(max_population_size / self.max_island_count)
         else:
             self.max_island_size = max_island_size
         
@@ -153,10 +158,10 @@ class SymbolicRegression():
 
         # Functions
         if functions is None:
-            self._functions = ["abs", "square", "cube", "quart", "cos", "sin",
+            self._functions = ["abs", "square", "cos", "sin",
                         "tan", "tanh", "exp", "sqrt", "log", "exp"] # "max", "min"
             self._functions_func = {"abs": lambda a: np.abs(a), "exp": lambda a: np.exp(a), "square": lambda a: a**2,
-                            "cube": lambda a: a**3, "quart": lambda a: a**4, "cos": lambda a: np.cos(a),
+                            "cos": lambda a: np.cos(a),
                             "sin": lambda a: np.sin(a), "tan": lambda a: np.tan(a), "tanh": lambda a: np.tanh(a),
                             "sqrt": lambda a: np.sqrt(a), "log": lambda a: np.log(a), "exp": lambda a: np.exp(a)}
         else:
@@ -415,12 +420,13 @@ class SymbolicRegression():
         for i in out.inorder():
             if i.Node._element_type == "absConstant":
                 # display(me.aexp.visualize_tree())
-                # print(f"me.c: {me.c}, me.c.vector: {me.c.vector}")
+                # print(f"me.c: {me.c}")
+                # print(f"me.c.vector: {me.c.vector}")
                 try: 
                     r = me.c.vector[k]
                 except:
                     # display(me.aexp.visualize_tree())
-                    # print(me.c.vector)
+                    # print(me.c)
                     raise(TypeError("ERRO"))
                 i.Node._element = r
                 i.Node._element_type = "constant"
@@ -780,22 +786,28 @@ class SymbolicRegression():
     #-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 
     def optimizeConstants(self, me:AEG, g: int, Ic: int):
+        # Individuals must have two or more particles in the pool
+        # Only the "best solutions" get optimized constants
+        if len(me.c.vector) <= 0 or len(me.pool) <= 1:
+                return me.copy_AEG(), 0
+
         if self.optimization_kind == "PSO":
             r_me, r_Ic = self.PSO(me, g, Ic)
             return r_me, r_Ic
         
         if self.optimization_kind == "LS":
             me = me.copy_AEG()
-
-            if len(me.pool) <= 0:
-                return me
             
             try:
-                params = curve_fit(me.sexp.toFunc(self._operators, self._functions)[0], self._features[self._feature_names[0]], self.y, me.pool[-1])
+                params, _ = curve_fit(me.toFunc(self._operators, self._functions, self._feature_names, self.custom_functions_dict), 
+                                      self._features[self._feature_names[0]], self.y, me.pool[-1].vector)
 
-                me.pool.append(params)
-                self.sort_pool_array(me)
+                particle = Particle(params, 
+                                    self._generate_random_velocity(me.pool[0].vector.shape[0]),
+                                    me.pool[0].vector) 
+                me.pool.append(particle)
                 me.c = me.pool[0]
+                self.sort_pool_array(me)
                 me.sexp.fitness_score = self.fitness_score(me)
                 me.sexp = self._convert_to_ExpTree(me)
             except RuntimeError:
@@ -805,20 +817,23 @@ class SymbolicRegression():
     
         if self.optimization_kind == "random_LS":
             me = me.copy_AEG()
-
-            if len(me.pool) <= 0:
-                return me
+            # print(me.pool)
             
             try:
                 # Vector of random numbers
                 guess = np.random.uniform(low=self.random_const_range[0], 
                                           high=self.random_const_range[1],
                                           size=len(me.pool[0].vector))
-                params = curve_fit(me.sexp.toFunc(self._operators, self._functions)[0], self._features[self._feature_names[0]], self.y, guess)
-                
-                me.pool.append(params)
-                self.sort_pool_array(me)
+                params, _ = curve_fit(me.toFunc(self._operators, self._functions, self._feature_names, self.custom_functions_dict),
+                                       self._features[self._feature_names[0]], self.y, guess)
+
+                particle = Particle(params, 
+                                    self._generate_random_velocity(me.pool[0].vector.shape[0]),
+                                    me.pool[0].vector)              
+                me.pool.append(particle)
                 me.c = me.pool[0]
+                # print(me.c)
+                self.sort_pool_array(me)
                 me.sexp.fitness_score = self.fitness_score(me)
                 me.sexp = self._convert_to_ExpTree(me)
             
@@ -829,19 +844,27 @@ class SymbolicRegression():
 
         if self.optimization_kind == "differential_evolution":
             me = me.copy_AEG()
-            func = me.sexp.toFunc(self._operators, self._functions)
+            # display(me.aexp.visualize_tree())
+            # print(len(me.pool))
+
+            func = me.toFunc(self._operators, self._functions, self._feature_names, self.custom_functions_dict)
             n_params = len(me.pool[0].vector)
 
             def cost_function(params):
-                y_pred = func(self.X, *params)
+                X = self._features[self._feature_names[0]]
+                y_pred = func(X, *params)
                 return np.mean((self.y - y_pred)**2)
             
             bounds = [(self.random_const_range[0], self.random_const_range[1]) for _ in range(n_params)]
+            # print(bounds)
 
             result = differential_evolution(cost_function, bounds)
-            best_params = result.x
+            params = result.x
 
-            me.pool.append(params)  
+            particle = Particle(params, 
+                                    self._generate_random_velocity(me.pool[0].vector.shape[0]),
+                                    me.pool[0].vector)  
+            me.pool.append(particle)  
             self.sort_pool_array(me)
             me.c = me.pool[0]
             me.sexp.fitness_score = self.fitness_score(me)
@@ -851,19 +874,24 @@ class SymbolicRegression():
         
         if self.optimization_kind == "dual_annealing":
             me = me.copy_AEG()
-            func = me.sexp.toFunc(self._operators, self._functions)
+            func = me.toFunc(self._operators, self._functions, self._feature_names, self.custom_functions_dict)
             n_params = len(me.pool[0].vector)
 
             def cost_function(params):
-                y_pred = func(self.X, *params)
+                X = self._features[self._feature_names[0]]
+                y_pred = func(X, *params)
                 return np.mean((self.y - y_pred)**2)
             
             bounds = [(self.random_const_range[0], self.random_const_range[1]) for _ in range(n_params)]
+    
 
             result = dual_annealing(cost_function, bounds)
-            best_params = result.x
+            params = result.x
 
-            me.pool.append(params)  
+            particle = Particle(params, 
+                                    self._generate_random_velocity(me.pool[0].vector.shape[0]),
+                                    me.pool[0].vector)  
+            me.pool.append(particle)  
             self.sort_pool_array(me)
             me.c = me.pool[0]
             me.sexp.fitness_score = self.fitness_score(me)
@@ -1134,12 +1162,14 @@ class SymbolicRegression():
                 dad = in_population[p] # every one gets crossed over (gets to be a dad)
                 
                 # Cross over partner must be from the same island 
-                # if dad.sexp.island is None: 
-                #     # Have no ideia why this bug happens sometimes, some individuals get here without a defined island
-                #     print("empty dad island")
-                #     K_original = 0
-                # else:
-                K_original = dad.sexp.island
+                if dad.sexp.island is None: 
+                    # Have no ideia why this bug happens sometimes, some individuals get here without a defined island
+                    print("empty dad island")
+                    display(dad.sexp.visualize_tree())
+                    K_original = 0
+                else:
+                    K_original = dad.sexp.island
+
                 try:
                     K = np.random.randint(K_original-self.island_interval[0], K_original+self.island_interval[1]+1)
                 except:

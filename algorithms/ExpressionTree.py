@@ -293,7 +293,7 @@ class ExpressionTree():
                 dot.edge(parent_element_type, element_type)
         return dot
             
-    def toString(self, operators, functions):
+    def toString(self, operators, functions, custom_functions_dict):
         
         def recursive_lamb(root):
             if root is None:
@@ -313,25 +313,33 @@ class ExpressionTree():
                 else: 
                     node = left
                 
-                if root._element == "cube":
-                    return "(" + node + ")" + "**3"
-                elif root._element == "quart":
-                    return "(" + node + ")" + "**4"
+                """
+                dict = {"exp-": ["exp(-", ")"] }
+                elif root._element == "exp-":
+                    return "exp(-" + node + ")"
+                """
+
+                # if root._element == "cube":
+                #     return "(" + node + ")" + "**3"
+                # elif root._element == "quart":
+                #     return "(" + node + ")" + "**4"
+                if root._element in custom_functions_dict:
+                    return custom_functions_dict[root._element][0] + node + custom_functions_dict[root._element][1]
                 else:
                     return root._element + "(" + node + ")"
         
         return recursive_lamb(self.root().Node)
     
-    def toSmpExpr(self, operators, functions):
-        expr_string = self.toString(operators, functions)
+    def toSmpExpr(self, operators, functions, custom_functions_dict, parameters=None):
+        expr_string = self.toString(operators, functions, custom_functions_dict)
 
         sexp = smp.sympify(expr_string)
 
         return sexp
 
-    def toFunc(self, operators, functions, feature_names=None, interpreter="numpy",
+    def toFunc(self, operators, functions, custom_functions_dict, feature_names=None, interpreter="numpy",
                inv_data: Dict = None):
-        smp_expr = self.toSmpExpr(operators, functions)
+        smp_expr = self.toSmpExpr(operators, functions, custom_functions_dict)
         
 
         if feature_names is None:
