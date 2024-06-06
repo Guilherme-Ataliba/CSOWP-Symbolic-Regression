@@ -275,40 +275,63 @@ class SymbolicRegression():
                 
         return tree
     
-    def evaluate_tree(self, tree):     
-        saida = np.array([])
+    # def evaluate_tree(self, tree):     
+    #     saida = np.array([])
         
         
-        previous_left_value = False
+    #     previous_left_value = False
             
-        # Calcula o valor da árvore para um x
-        for p in tree.postorder():
-            num_children = tree.num_children(p)
-            if num_children == 2: # é operador
-                left_value = self._operators_func[p.element()](left_value, right_value)
-                previous_left_value = True
+    #     # Calcula o valor da árvore para um x
+    #     for p in tree.postorder():
+    #         num_children = tree.num_children(p)
+    #         if num_children == 2: # é operador
+    #             left_value = self._operators_func[p.element()](left_value, right_value)
+    #             previous_left_value = True
 
-            elif num_children == 1: # é função
-                if previous_left_value:
-                    left_value = self._functions_func[p.element()](left_value)
-                else:
-                    right_value = self._functions_func[p.element()](right_value)
+    #         elif num_children == 1: # é função
+    #             if previous_left_value:
+    #                 left_value = self._functions_func[p.element()](left_value)
+    #             else:
+    #                 right_value = self._functions_func[p.element()](right_value)
 
-            else: # é constante ou feature
-                if type(p.element()) != str: #é constante
-                    element = p.element()
-                else: # é feature
-                    element = self._features[p.element()]
+    #         else: # é constante ou feature
+    #             if type(p.element()) != str: #é constante
+    #                 element = p.element()
+    #             else: # é feature
+    #                 element = self._features[p.element()]
 
-                if previous_left_value:
-                    right_value = element
-                    previous_left_value = False
-                else:
-                    left_value = element
-                    previous_left_value = True
-        saida = np.append(saida, left_value)
+    #             if previous_left_value:
+    #                 right_value = element
+    #                 previous_left_value = False
+    #             else:
+    #                 left_value = element
+    #                 previous_left_value = True
+    #     saida = np.append(saida, left_value)
             
-        return saida
+    #     return saida
+
+    def toFunc(self, tree):
+        func_string = tree.toString(self._operators, self._functions, self.custom_functions_dict)
+        
+        features = ""
+        for i in range(len(self._feature_names)-1):
+            features += i
+            features += ", "
+        features += self._feature_names[-1]
+
+        func = eval(f"lambda {features}: {func_string}")
+        return func
+
+    def evaluate_tree(self, tree):
+        """I could probably create a version that stores all created functions
+        in a dictionary and then just access this dictionary, instead of creating
+        the function every time. But i'd need a way to erase functions of individuals
+        that are no longer in the population"""
+
+        func = self.toFunc(tree)
+        features = np.array(list(self._features.values()))
+        return func(*features)
+
     @singledispatchmethod
     def fitness_score(self, individual: Any, custom_func = None):
         raise(f"type {individual} is not valid")
