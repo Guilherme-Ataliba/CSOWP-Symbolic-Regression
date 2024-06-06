@@ -7,6 +7,8 @@ from random import randint, choice, uniform, seed
 from ExpressionTree import *
 from scipy.optimize import curve_fit, differential_evolution, dual_annealing
 
+np.random.seed(42)
+seed(42)
 class Particle():
     "v: velocity vector"
     __slots__ = ("vector", "velocity", "best")
@@ -110,7 +112,7 @@ class SymbolicRegression():
                 "_mult_tree", "_add_tree", "_linear_tree", "island_interval", "optimization_kind", "custom_functions_dict")
     def __init__(self, G, feature_names=None, label_name="y", max_population_size=5000, max_expression_size = 5, max_island_count=None, 
                 max_island_size=None, max_pool_size = 15, random_const_range=(0,1), operators=None, functions=None, weights=None,
-                island_interval=None, optimization_kind="PSO", custom_functions_dict={}):
+                island_interval=None, optimization_kind="PSO", custom_functions_dict=None):
         """
             - feature_names: A list containing the names of every feature in X
             - island_interval: (islands bellow the current one, islands above the current one)
@@ -123,7 +125,7 @@ class SymbolicRegression():
         self.max_pool_size = max_pool_size
         self.max_expression_size = max_expression_size
         self.optimization_kind = optimization_kind
-        self.custom_functions_dict = custom_functions_dict
+        
 
         if max_island_count is None:
             self.max_island_count = int(max_population_size/10)
@@ -159,11 +161,11 @@ class SymbolicRegression():
         # Functions
         if functions is None:
             self._functions = ["abs", "square", "cos", "sin",
-                        "tan", "tanh", "exp", "sqrt", "log", "exp"] # "max", "min"
+                        "tan", "tanh", "exp", "sqrt", "log"] # "max", "min"
             self._functions_func = {"abs": lambda a: np.abs(a), "exp": lambda a: np.exp(a), "square": lambda a: a**2,
                             "cos": lambda a: np.cos(a),
                             "sin": lambda a: np.sin(a), "tan": lambda a: np.tan(a), "tanh": lambda a: np.tanh(a),
-                            "sqrt": lambda a: np.sqrt(a), "log": lambda a: np.log(a), "exp": lambda a: np.exp(a)}
+                            "sqrt": lambda a: np.sqrt(a), "log": lambda a: np.log(a)}
         else:
             self._functions_func = functions
             self._functions = list(functions.keys())
@@ -185,6 +187,14 @@ class SymbolicRegression():
             for i, j in weights.items():
                 self._weights[i] = j
 
+        # Function Dictionary
+        self.custom_functions_dict = {"sin": ["np.sin(",")"], "cos": ["np.cos(",")"],
+                                      "abs": ["np.abs(", ")"], "square": ["(", ")**2"],
+                                      "tan": ["tan(", ")"], "tanh": ["tanh(", ")"],
+                                      "exp": ["np.exp(", ")"], "sqrt": ["np.sqrt(", ")"],
+                                      }
+        if custom_functions_dict is not None:
+            self.custom_functions_dict.update(custom_functions_dict)
 
         # Linear Transform Trees
         self._mult_tree = ExpressionTree()
@@ -310,14 +320,49 @@ class SymbolicRegression():
             
     #     return saida
 
-    def toFunc(self, tree):
-        func_string = tree.toString(self._operators, self._functions, self.custom_functions_dict)
+    @singledispatchmethod
+    def toFunc(self, individual: Any):
+        raise(f"type {type(individual)} is not valid")
+    
+    @toFunc.register
+    def _(self, individual: ExpressionTree):
+        func_string = individual.toString(self._operators, self._functions, self.custom_functions_dict)
+        
+        #Dealing with abstract constants
+        func_string = func_string.replace("[", "").replace("]", "") 
         
         features = ""
         for i in range(len(self._feature_names)-1):
-            features += i
+            features += self._feature_names[i]
             features += ", "
         features += self._feature_names[-1]
+                
+
+        func = eval(f"lambda {features}: {func_string}")
+        return func
+    
+    @toFunc.register
+    def _(self, individual: AEG):
+        func_string = individual.aexp.toString(self._operators, self._functions, self.custom_functions_dict)
+        
+        #Dealing with abstract constants
+        func_string = func_string.replace("[", "").replace("]", "") 
+        
+        features = ""
+        for i in range(len(self._feature_names)-1):
+            features += self._feature_names[i]
+            features += ", "
+        features += self._feature_names[-1]
+
+        n_const = len(individual.c.vector)
+        if n_const > 0:
+            additional_features = [f"c{i}" for i in range(n_const)]
+            features += ", "
+            for i in range(len(additional_features)-1):
+                features += additional_features[i]
+                features += ", "
+            features += additional_features[-1]
+                
 
         func = eval(f"lambda {features}: {func_string}")
         return func
@@ -822,7 +867,7 @@ class SymbolicRegression():
             me = me.copy_AEG()
             
             try:
-                params, _ = curve_fit(me.toFunc(self._operators, self._functions, self._feature_names, self.custom_functions_dict), 
+                params, _ = curve_fit(self.toFunc(me), 
                                       self._features[self._feature_names[0]], self.y, me.pool[-1].vector)
 
                 particle = Particle(params, 
@@ -847,7 +892,7 @@ class SymbolicRegression():
                 guess = np.random.uniform(low=self.random_const_range[0], 
                                           high=self.random_const_range[1],
                                           size=len(me.pool[0].vector))
-                params, _ = curve_fit(me.toFunc(self._operators, self._functions, self._feature_names, self.custom_functions_dict),
+                params, _ = curve_fit(self.toFunc(me),
                                        self._features[self._feature_names[0]], self.y, guess)
 
                 particle = Particle(params, 
@@ -870,7 +915,7 @@ class SymbolicRegression():
             # display(me.aexp.visualize_tree())
             # print(len(me.pool))
 
-            func = me.toFunc(self._operators, self._functions, self._feature_names, self.custom_functions_dict)
+            func = self.toFunc(me)
             n_params = len(me.pool[0].vector)
 
             def cost_function(params):
@@ -897,7 +942,7 @@ class SymbolicRegression():
         
         if self.optimization_kind == "dual_annealing":
             me = me.copy_AEG()
-            func = me.toFunc(self._operators, self._functions, self._feature_names, self.custom_functions_dict)
+            func = self.toFunc(me)
             n_params = len(me.pool[0].vector)
 
             def cost_function(params):

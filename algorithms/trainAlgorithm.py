@@ -6,6 +6,7 @@ from time import time
 import os 
 import warnings
 import pickle
+from random import seed
 
 os.environ["PATH"] += os.pathsep + 'D:/Program Files (x86)/Graphviz-10.0.1-win64/bin/'
 
@@ -14,7 +15,7 @@ def testAlgorithm(func, x_range, n_points, dir_path, population, generations,
                   normalize_range=(0,1), ignore_warning=True, overwrite=False,
                   n_runs=1, operators=None, functions=None, weights=None,
                   island_interval=None, optimization_kind="PSO",
-                  custom_functions_dict=None):
+                  custom_functions_dict=None, SEED=None):
 
     # Initial Definitions ==============================
     if ignore_warning:
@@ -45,6 +46,9 @@ def testAlgorithm(func, x_range, n_points, dir_path, population, generations,
         originX = X
         originy = y
     
+    np.random.seed(SEED)
+    seed(SEED)
+
     # Training the model ===============================
     for i in range(n_runs):
         print(f"-=-=-=-=-=-=-=-= Training for population {population} and generation {generations} - {dir_path[dir_path.find('/')+1:]} =-=-=-=-=-=-=-=-")

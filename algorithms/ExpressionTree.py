@@ -306,7 +306,11 @@ class ExpressionTree():
             right = recursive_lamb(root._right)
 
             if root._element in operators:
+                if root._element == "/":
+                    return "np.divide(" + left + "," + right + ")"
+                # else
                 return "(" + left + str(root._element) + right + ")"
+                
             elif root._element in functions:
                 if left == "":
                     node = right
