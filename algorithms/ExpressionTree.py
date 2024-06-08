@@ -334,8 +334,46 @@ class ExpressionTree():
         
         return recursive_lamb(self.root().Node)
     
+    def toString_smp(self, operators, functions, custom_functions_dict):
+        
+        def recursive_lamb(root):
+            if root is None:
+                return ""
+            
+            if root._left is None and root._right is None:
+                return str(root._element)
+            
+            left = recursive_lamb(root._left)
+            right = recursive_lamb(root._right)
+
+            if root._element in operators:
+                return "(" + left + str(root._element) + right + ")"
+                
+            elif root._element in functions:
+                if left == "":
+                    node = right
+                else: 
+                    node = left
+                
+                """
+                dict = {"exp-": ["exp(-", ")"] }
+                elif root._element == "exp-":
+                    return "exp(-" + node + ")"
+                """
+
+                # if root._element == "cube":
+                #     return "(" + node + ")" + "**3"
+                # elif root._element == "quart":
+                #     return "(" + node + ")" + "**4"
+                if root._element in custom_functions_dict:
+                    return custom_functions_dict[root._element][0].replace("np.", "") + node + custom_functions_dict[root._element][1]
+                else:
+                    return root._element + "(" + node + ")"
+        
+        return recursive_lamb(self.root().Node)
+    
     def toSmpExpr(self, operators, functions, custom_functions_dict, parameters=None):
-        expr_string = self.toString(operators, functions, custom_functions_dict)
+        expr_string = self.toString_smp(operators, functions, custom_functions_dict)
 
         sexp = smp.sympify(expr_string)
 
