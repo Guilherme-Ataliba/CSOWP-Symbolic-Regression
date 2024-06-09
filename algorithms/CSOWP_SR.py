@@ -691,7 +691,12 @@ class SymbolicRegression():
         
         copied = me.sexp.copy_tree(me.sexp.root())
         L = len(copied)
+
+        if L <= 1: # If the tree has only one node it doesnt make sense to mutate it
+            return copied
+
         n_steps = randint(0, L)
+
         
         for c, p in enumerate(copied.inorder()):
             if c == n_steps:
@@ -792,13 +797,28 @@ class SymbolicRegression():
                     if random_number == 1:
                         size = randint(1, 2)
                         subtree = self.generate_expr(size)
-                        
                         copied.attach_subtree(p,subtree)
+                        # try:
+                        #     copied.attach_subtree(p,subtree)
+                        # except:
+                        #     display(copied.visualize_tree())
+                        #     print(p, type(p))
+                        #     display(subtree.visualize_tree())
+                        #     raise("ERRO na posição p - mutação")
                     
                     # Delete the node
                     elif random_number == 2:
                         parent = copied.parent(p)
                         e_type = parent.element_type()
+                        
+                        # try:
+                        #     e_type = parent.element_type()
+                        # except:
+                        #     print(p, type(p))
+                        #     display(copied.visualize_tree())
+                        #     print(c)
+                        #     raise("ERRO na posição p - mutação")
+
                         copied.delete(p)
                         
                         if e_type == "function": # if the parent was function becomes feature or constant
@@ -829,6 +849,11 @@ class SymbolicRegression():
         mom = mom.sexp.copy_tree(mom.sexp.root())
         Ld = len(dad)
         Lm = len(mom)
+
+        # If the mom's expression is too small (a single node) there can't be crossover
+        if Lm <= 1:
+            return mom
+
         n = randint(0, Ld-1)
         m = randint(1, Lm-1)  
         
