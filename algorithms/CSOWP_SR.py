@@ -6,6 +6,7 @@ import numpy as np
 from random import randint, choice, uniform, seed
 from ExpressionTree import *
 from scipy.optimize import curve_fit, differential_evolution, dual_annealing
+from copy import deepcopy
 
 np.random.seed(42)
 seed(42)
@@ -198,21 +199,21 @@ class SymbolicRegression():
 
         # Linear Transform Trees
         self._mult_tree = ExpressionTree()
-        p = self._mult_tree.add_root("*")
-        self._mult_tree.add_left(p, "a")
-        self._mult_tree.add_right(p, "x")
+        p = self._mult_tree.add_root("*", e_type="operator")
+        self._mult_tree.add_left(p, "a", e_type="constant")
+        self._mult_tree.add_right(p, "x", e_type="feature")
 
         self._add_tree = ExpressionTree()
-        p = self._add_tree.add_root("+")
-        self._add_tree.add_left(p, "a")
-        self._add_tree.add_right(p, "x")
+        p = self._add_tree.add_root("+", e_type="operator")
+        self._add_tree.add_left(p, "a", e_type="constant")
+        self._add_tree.add_right(p, "x", e_type="feature")
 
         self._linear_tree = ExpressionTree()
-        p = self._linear_tree.add_root("+")
-        self._linear_tree.add_right(p, "a")
-        p = self._linear_tree.add_left(p, "*")
-        self._linear_tree.add_left(p, "b")
-        self._linear_tree.add_right(p, "x")
+        p = self._linear_tree.add_root("+", e_type="operator")
+        self._linear_tree.add_right(p, "a", e_type="constant")
+        p = self._linear_tree.add_left(p, "*", e_type="operator")
+        self._linear_tree.add_left(p, "b", e_type="constant")
+        self._linear_tree.add_right(p, "x", e_type="feature")
 
         
     def fit(self, X, y, feature_names=None, label_name="y"):
@@ -564,7 +565,6 @@ class SymbolicRegression():
         # display(lamb.aexp.visualize_tree())
         # for i in lamb.pool:
         #     print(i.vector)
-        
         if len(population) <= 0:
             population = np.array([])
         
@@ -589,7 +589,7 @@ class SymbolicRegression():
                 
                 
                     
-                w.pool = w.pool[0:self.max_pool_size] # truncating to max_popilation_size
+                w.pool = w.pool[0:self.max_pool_size] # truncating to max_pool_size
                 w.c = w.pool[0]
                 w.sexp = self._convert_to_ExpTree(w)
                 return population
@@ -810,7 +810,12 @@ class SymbolicRegression():
                             copied.replace(parent, choice(self._functions), "function")
         
                 break
-            
+        
+        sc = 0
+        for _ in copied.preorder():
+            sc += 1
+        copied._size = sc
+
         copied = self._convert_to_AEG(copied)
         return copied
     
@@ -835,14 +840,21 @@ class SymbolicRegression():
             if c == n:
                 sub_expression = dad.copy_tree(p)
                 break
-        
+            d=c
         # getting mother location
         for c, p in enumerate(mom.preorder()):
             if (c == m):
-                mom.attach_subtree(p, sub_expression)
+                try:
+                    mom.attach_subtree(p, sub_expression)
+                except:
+                    print(n, len(dad), dad, d)
+                    display(dad.visualize_tree())
                 break
         
-        
+        sc = 0
+        for _ in mom.preorder():
+            sc += 1
+        mom._size = sc
         mom = self._convert_to_AEG(mom)
         return mom
         
@@ -853,31 +865,43 @@ class SymbolicRegression():
     #                  Constant Optimization
     #-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 
-    def optimizeConstants(self, me:AEG, g: int, Ic: int):
+    def optimizeConstants(self, me:AEG, g: int, Ic: int, check_pool: bool):
         # Individuals must have two or more particles in the pool
         # Only the "best solutions" get optimized constants
-        if len(me.c.vector) <= 0 or len(me.pool) <= 1:
+        if len(me.c.vector) <= 0:
                 return me.copy_AEG(), 0
+        
+        if len(me.pool) <= 1 and check_pool == True: 
+            return me.copy_AEG(), 0
+
+        # Every individual (that has constants) gets optimized
+        # if len(me.c.vector) <= 0:
+        #         return me.copy_AEG(), 0
 
         if self.optimization_kind == "PSO":
-            r_me, r_Ic = self.PSO(me, g, Ic)
-            return r_me, r_Ic
+            if check_pool == False:
+                return me.copy_AEG(), 0
+            else:
+                r_me, r_Ic = self.PSO(me, g, Ic)
+                return r_me, r_Ic
         
         if self.optimization_kind == "LS":
             me = me.copy_AEG()
             
             try:
+                # print(me.pool[0].vector)
                 params, _ = curve_fit(self.toFunc(me), 
-                                      self._features[self._feature_names[0]], self.y, me.pool[-1].vector)
-
+                                      self._features[self._feature_names[0]], self.y, me.pool[0].vector)
+                # print(params)
                 particle = Particle(params, 
                                     self._generate_random_velocity(me.pool[0].vector.shape[0]),
                                     me.pool[0].vector) 
                 me.pool.append(particle)
+                me.pool = self.sort_pool_array(me)
                 me.c = me.pool[0]
-                self.sort_pool_array(me)
                 me.sexp.fitness_score = self.fitness_score(me)
                 me.sexp = self._convert_to_ExpTree(me)
+                # print("reached")
             except RuntimeError:
                 params = me.pool[0]
             
@@ -899,9 +923,8 @@ class SymbolicRegression():
                                     self._generate_random_velocity(me.pool[0].vector.shape[0]),
                                     me.pool[0].vector)              
                 me.pool.append(particle)
+                me.pool = self.sort_pool_array(me)
                 me.c = me.pool[0]
-                # print(me.c)
-                self.sort_pool_array(me)
                 me.sexp.fitness_score = self.fitness_score(me)
                 me.sexp = self._convert_to_ExpTree(me)
             
@@ -932,8 +955,8 @@ class SymbolicRegression():
             particle = Particle(params, 
                                     self._generate_random_velocity(me.pool[0].vector.shape[0]),
                                     me.pool[0].vector)  
-            me.pool.append(particle)  
-            self.sort_pool_array(me)
+            me.pool.append(particle)
+            me.pool = self.sort_pool_array(me)
             me.c = me.pool[0]
             me.sexp.fitness_score = self.fitness_score(me)
             me.sexp = self._convert_to_ExpTree(me)            
@@ -959,8 +982,8 @@ class SymbolicRegression():
             particle = Particle(params, 
                                     self._generate_random_velocity(me.pool[0].vector.shape[0]),
                                     me.pool[0].vector)  
-            me.pool.append(particle)  
-            self.sort_pool_array(me)
+            me.pool.append(particle)
+            me.pool = self.sort_pool_array(me)
             me.c = me.pool[0]
             me.sexp.fitness_score = self.fitness_score(me)
             me.sexp = self._convert_to_ExpTree(me)            
@@ -1126,7 +1149,7 @@ class SymbolicRegression():
             # print("sai")
         # Copy and add a few more random individuals
         else:    
-            out_population = np.copy(in_population)
+            out_population = deepcopy(in_population)
             K = int(self.max_population_size/10)
             
             # Initialize new random population
@@ -1176,8 +1199,7 @@ class SymbolicRegression():
             # The tree is too complex, then it goes to the last place
             if island >= self.max_island_count:
                 island = self.max_island_count-1
-            lamb.sexp.island = island
-            
+            lamb.sexp.island = island            
             
             island_counts[island] = island_counts[island] + 1     # Increasing the count of element inside the island
             if (island_counts[island] <= self.max_island_size):
@@ -1214,20 +1236,38 @@ class SymbolicRegression():
             # print(in_population)
             
             # initialize Ic for optimizeConstants
+            # Constant optimization for the best individual in each island
             
+            # for i in in_population:
+            #     print("ilha: ",i.sexp.island)
+            # print("========")
+            
+            for i in range(len(islands)):
+                try:
+                    lamb, Ic = self.optimizeConstants(islands[i][0], g, i, check_pool=False)
+                    out_population = self.insertLambda(out_population, lamb)
+                except TypeError: #A ilha tá vazia
+                    pass
+
+            
+            # for i in in_population:
+            #         print("ilha: ",i.sexp.island)
+                
+                # display(islands[i][0].visualize_tree())
+
+
             # Everyone gets mutated and crossed over
                 
             for p in range(0, P):
                 # print("p:", p)
                 Ic = 0
                 
-                
-                
-                lamb, Ic = self.optimizeConstants(in_population[p], g, Ic)
+                lamb, Ic = self.optimizeConstants(in_population[p], g, Ic, check_pool=True)
                 out_population = self.insertLambda(out_population, lamb)
                 lamb = self.mutateSExp(in_population[p])
                 out_population = self.insertLambda(out_population, lamb)
                 dad = in_population[p] # every one gets crossed over (gets to be a dad)
+                
                 
                 # Cross over partner must be from the same island 
                 if dad.sexp.island is None: 
@@ -1256,7 +1296,7 @@ class SymbolicRegression():
                 lamb = self.crossoverSExp(dad, mom)
                 out_population = self.insertLambda(out_population, lamb)
             
-            champ, islands, in_population = self.populationPruning(in_population, out_population, islands)
+            champ, islands, in_population = self.populationPruning(out_population, in_population, islands)
 
         return champ
         
