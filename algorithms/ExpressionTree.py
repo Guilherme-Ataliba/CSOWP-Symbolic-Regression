@@ -309,6 +309,7 @@ class ExpressionTree():
                 if root._element == "/":
                     return "np.divide(" + left + "," + right + ")"
                 # else
+                # print(left, str(root._element), right)
                 return "(" + left + str(root._element) + right + ")"
                 
             elif root._element in functions:

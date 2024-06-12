@@ -7,6 +7,7 @@ from random import randint, choice, uniform, seed
 from ExpressionTree import *
 from scipy.optimize import curve_fit, differential_evolution, dual_annealing
 from copy import deepcopy
+import pickle
 
 np.random.seed(42)
 seed(42)
@@ -191,8 +192,9 @@ class SymbolicRegression():
         # Function Dictionary
         self.custom_functions_dict = {"sin": ["np.sin(",")"], "cos": ["np.cos(",")"],
                                       "abs": ["np.abs(", ")"], "square": ["(", ")**2"],
-                                      "tan": ["tan(", ")"], "tanh": ["tanh(", ")"],
+                                      "tan": ["np.tan(", ")"], "tanh": ["np.tanh(", ")"],
                                       "exp": ["np.exp(", ")"], "sqrt": ["np.sqrt(", ")"],
+                                      "log": ["np.log(", ")"]
                                       }
         if custom_functions_dict is not None:
             self.custom_functions_dict.update(custom_functions_dict)
@@ -1279,8 +1281,7 @@ class SymbolicRegression():
         champ = in_population[0]
         return champ, islands, in_population  
     
-    
-    def predict(self):
+    def predict(self, gen_fit_path=None):
         """Must initialize Ic as 0"""
         
         max_island_count = 1
@@ -1361,6 +1362,14 @@ class SymbolicRegression():
                 out_population = self.insertLambda(out_population, lamb)
             
             champ, islands, in_population = self.populationPruning(out_population, in_population, islands)
+
+            if gen_fit_path is not None:
+                with open(f"{gen_fit_path}/gen_fit.csv", "a") as file:
+                    file.write(f"{g},{self.fitness_score(champ)}\n")
+
+                with open(f"{gen_fit_path}/tree_gen_fit-{g}", "wb") as file:
+                    pickle.dump(champ.sexp, file)
+                
 
         return champ
         

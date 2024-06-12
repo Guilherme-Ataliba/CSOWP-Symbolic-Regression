@@ -15,7 +15,7 @@ def testAlgorithm(func, x_range, n_points, dir_path, population, generations,
                   normalize_range=(0,1), ignore_warning=True, overwrite=False,
                   n_runs=1, operators=None, functions=None, weights=None,
                   island_interval=None, optimization_kind="PSO",
-                  custom_functions_dict=None, SEED=None):
+                  custom_functions_dict=None, SEED=None, gen_fit_path=None):
 
     # Initial Definitions ==============================
     if ignore_warning:
@@ -56,7 +56,7 @@ def testAlgorithm(func, x_range, n_points, dir_path, population, generations,
                                 max_island_count=int(population/10), random_const_range=const_range,
                                 operators=operators, functions=functions, weights=weights,
                                 island_interval=island_interval, optimization_kind=optimization_kind,
-                                custom_functions_dict=custom_functions_dict)
+                                custom_functions_dict=custom_functions_dict, gen_fit_path=gen_fit_path)
         SR.fit(np.c_[X], y, feature_names=["x"])    
         
         start_time = time()
