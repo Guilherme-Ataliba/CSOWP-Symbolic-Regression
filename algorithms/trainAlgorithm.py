@@ -56,11 +56,11 @@ def testAlgorithm(func, x_range, n_points, dir_path, population, generations,
                                 max_island_count=int(population/10), random_const_range=const_range,
                                 operators=operators, functions=functions, weights=weights,
                                 island_interval=island_interval, optimization_kind=optimization_kind,
-                                custom_functions_dict=custom_functions_dict, gen_fit_path=gen_fit_path)
+                                custom_functions_dict=custom_functions_dict)
         SR.fit(np.c_[X], y, feature_names=["x"])    
         
         start_time = time()
-        output_AEG = SR.predict()
+        output_AEG = SR.predict(gen_fit_path=gen_fit_path)
         end_time = time()
         data = SR.evaluate_tree(output_AEG.sexp)
         
