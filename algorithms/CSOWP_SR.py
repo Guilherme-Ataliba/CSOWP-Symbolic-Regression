@@ -9,8 +9,6 @@ from scipy.optimize import curve_fit, differential_evolution, dual_annealing
 from copy import deepcopy
 import pickle
 
-np.random.seed(42)
-seed(42)
 class Particle():
     "v: velocity vector"
     __slots__ = ("vector", "velocity", "best")
@@ -1364,10 +1362,10 @@ class SymbolicRegression():
             champ, islands, in_population = self.populationPruning(out_population, in_population, islands)
 
             if gen_fit_path is not None:
-                with open(f"{gen_fit_path}/gen_fit.csv", "a") as file:
+                with open(f"{gen_fit_path}.csv", "a") as file:
                     file.write(f"{g},{self.fitness_score(champ)}\n")
 
-                with open(f"{gen_fit_path}/tree_gen_fit-{g}", "wb") as file:
+                with open(f"{gen_fit_path}-{g}", "wb") as file:
                     pickle.dump(champ.sexp, file)
                 
 

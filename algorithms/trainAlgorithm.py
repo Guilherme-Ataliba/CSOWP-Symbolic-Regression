@@ -60,7 +60,7 @@ def testAlgorithm(func, x_range, n_points, dir_path, population, generations,
         SR.fit(np.c_[X], y, feature_names=["x"])    
         
         start_time = time()
-        output_AEG = SR.predict(gen_fit_path=gen_fit_path)
+        output_AEG = SR.predict(gen_fit_path=f"{gen_fit_path}/gen_fit-{population}-{generations}-{i}")
         end_time = time()
         data = SR.evaluate_tree(output_AEG.sexp)
         
@@ -69,11 +69,11 @@ def testAlgorithm(func, x_range, n_points, dir_path, population, generations,
         # Writing the data =================================
 
         # In case the output is a constant function
-        if data.shape[0] == 1:
-            data = np.array([data[0] for i in range(0, 1000)])
+        # if data.shape[0] == 1:
+        #     data = np.array([data[0] for i in range(0, 1000)])
 
-        data = pd.DataFrame(np.c_[X, data], columns=["x", "y"])
-        data.to_csv(dir_path + f"/data/data-{population}.csv", sep=",", index=False)
+        # data = pd.DataFrame(np.c_[X, data], columns=["x", "y"])
+        # data.to_csv(dir_path + f"/data/data-{population}.csv", sep=",", index=False)
 
         # graph = output_AEG.sexp.visualize_tree()
         # graph.render(dir_path + f"/trees/tree-{population}", format="svg")
