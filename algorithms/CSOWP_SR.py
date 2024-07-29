@@ -692,106 +692,14 @@ class SymbolicRegression():
         copied = me.sexp.copy_tree(me.sexp.root())
         L = len(copied)
 
-        if L <= 1: # If the tree has only one node the only mutation that makes sense is linear transformation
-            # If tree has length one it is a single constant or feature
-            transform_flag = True
-            # Linear Transform
-            linear_choice = randint(0, 2)
-            # Add Tree
-            if linear_choice == 0:
-                
-                new_subtree = self._add_tree.copy_tree(self._add_tree.root())
-                new_subtree.root().Node._left._element = self._options["constant"]()
-                right_most_element = new_subtree.right(new_subtree.root())
-            
-            # Multi Tree
-            elif linear_choice == 1:
-                
-                new_subtree = self._mult_tree.copy_tree(self._mult_tree.root())
-                new_subtree.root().Node._left._element = self._options["constant"]()
-                right_most_element = new_subtree.right(new_subtree.root())
-            
-            # Linear Transform Tree
-            elif linear_choice == 2:
-                
-                new_subtree = self._linear_tree.copy_tree(self._linear_tree.root())
-                root = new_subtree.root().Node
-                root._right._element = self._options["constant"]()
-                root._left._left._element = self._options["constant"]()
-                right_most_element = new_subtree.right(new_subtree.left(new_subtree.root()))
-
-            
-            right_most_parent = new_subtree.parent(right_most_element)
-            new_subtree.delete(right_most_element)
-            
-            right_most_parent.Node._right = copied.root().Node
-            copied.root().Node._parent = right_most_parent.Node
-            copied._root = new_subtree.root().Node
-
-            sc = 0
-            for _ in copied.preorder():
-                sc += 1
-            copied._size = sc
-
-            copied = self._convert_to_AEG(copied)
+        if L <= 1: 
             return copied
 
         n_steps = randint(0, L)
         for c, p in enumerate(copied.inorder()):
             if c == n_steps:
-                
-                pick_mutation = randint(0,1)
-                transform_flag = False
 
-                if p.element_type() in ["feature", "function"] and pick_mutation == 0:
-                    transform_flag = True
-                    # Linear Transform
-                    linear_choice = randint(0, 2)
-                    # Add Tree
-                    if linear_choice == 0:
-                        
-                        new_subtree = self._add_tree.copy_tree(self._add_tree.root())
-                        new_subtree.root().Node._left._element = self._options["constant"]()
-                        right_most_element = new_subtree.right(new_subtree.root())
-                    
-                    # Multi Tree
-                    elif linear_choice == 1:
-                        
-                        new_subtree = self._mult_tree.copy_tree(self._mult_tree.root())
-                        new_subtree.root().Node._left._element = self._options["constant"]()
-                        right_most_element = new_subtree.right(new_subtree.root())
-                    
-                    # Linear Transform Tree
-                    elif linear_choice == 2:
-                        
-                        new_subtree = self._linear_tree.copy_tree(self._linear_tree.root())
-                        root = new_subtree.root().Node
-                        root._right._element = self._options["constant"]()
-                        root._left._left._element = self._options["constant"]()
-                        right_most_element = new_subtree.right(new_subtree.left(new_subtree.root()))
-
-                    parent = copied.parent(p)
-                    right_most_parent = new_subtree.parent(right_most_element)
-                    new_subtree.delete(right_most_element)
-                    
-                    if copied.is_root(p):
-                        right_most_parent.Node._right = copied.root().Node
-                        copied.root().Node._parent = right_most_parent.Node
-                        copied._root = new_subtree.root().Node
-                        
-                    else:
-                        copied_parent = copied.parent(p)
-                        if copied.is_left(p):
-                            copied_parent.Node._left = new_subtree._root
-                        else:
-                            copied_parent.Node._right = new_subtree._root
-                        
-                        right_most_parent.Node._right = p.Node
-                        p.Node._parent = right_most_parent.Node
-                        new_subtree._root._parent = copied_parent.Node
-
-
-                if not copied.is_leaf(p) and transform_flag==False:
+                if not copied.is_leaf(p):
                     random_number = randint(0,1)
                     
                     # attach subtree above
@@ -829,7 +737,7 @@ class SymbolicRegression():
                         copied.replace(p, self._options[p.element_type()](), p.element_type())
                     
                 # its a leaf
-                elif copied.is_leaf(p) and transform_flag==False:
+                elif copied.is_leaf(p):
                     random_number = randint(1,2)                    
 
                     # Attach a random subtree

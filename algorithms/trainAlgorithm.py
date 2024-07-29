@@ -60,7 +60,10 @@ def testAlgorithm(func, x_range, n_points, dir_path, population, generations,
         SR.fit(np.c_[X], y, feature_names=["x"])    
         
         start_time = time()
-        output_AEG = SR.predict(gen_fit_path=f"{gen_fit_path}/gen_fit-{population}-{generations}-{i}")
+        if gen_fit_path is not None:
+            output_AEG = SR.predict(gen_fit_path=f"{gen_fit_path}/gen_fit-{population}-{generations}-{i}")
+        else:
+            output_AEG = SR.predict()
         end_time = time()
         data = SR.evaluate_tree(output_AEG.sexp)
         

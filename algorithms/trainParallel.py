@@ -1,26 +1,24 @@
 from trainAlgorithm import *
 import concurrent.futures
 import typing
-    
+from CSOWP_SR import *
+from ExpressionTree import *
+
+def call_predict(SR:SymbolicRegression):
+    return SR.predict()
+
+X1 = np.linspace(0, 10, 1000)
+X2 = np.linspace(0, 10, 1000)
+y1 = X1**2
+y2 = 3*X2
+
+SR1 = SymbolicRegression(3)
+SR1.fit(X1, y1)
+
+SR2 = SymbolicRegression(3)
+SR2.fit(X2, y2)
 
 if __name__ == "__main__":
 
-    # Defining Parameters
-    populations = [100, 200]
-    generations = 3
-    expression_size = 3
-
-    paths = ["output_test1", "output_test2"]
-    paths = ["Outputs/" + str(i) for i in paths]
-
-    def func(x):
-        a=10
-        b=-0.5
-        c=-0.5
-        d=2
-        return a*np.exp(b*np.exp(c*x + d))
-    x_range = (-5, 15)
-    n_points = 1000
-    const_range = (-10, 10)
-
-    
+    with concurrent.futures.ProcessPoolExecutor() as pool:
+        output = pool.map(call_predict, [SR1, SR2])
