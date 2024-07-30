@@ -1,4 +1,10 @@
-from trainAlgorithm import *
+import numpy
+from sklearn.preprocessing import MinMaxScaler
+from time import time
+import os
+import warnings
+import pickle
+from random import seed
 from pathos.multiprocessing import ProcessingPool as Pool
 import typing
 from CSOWP_SR import *
@@ -12,8 +18,6 @@ class trainSR():
                  optimization_kind="PSO", custom_functions_dict=None, SEED=None, 
                  gen_fit_path=None):
         
-        self.SR_instances = ()
-
         self.dir_path = dir_path
         self.population = population
         self.generations = generations
