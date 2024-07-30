@@ -999,12 +999,13 @@ class SymbolicRegression():
         
         lbest = me.pool[i].best
         if (lbest.all() == None):
-            lbest = c
+            lbest = c.copy()
             # print("entrei: ", c)
             me.pool[i].best = lbest
+
         
         gbest = me.c.best
-        if (gbest.all() == None):
+        if (gbest.all() == None) or gbest is None:
             gbest = c
             me.c.best = gbest
         
@@ -1020,7 +1021,14 @@ class SymbolicRegression():
         
         # Update the particle's velocity and position
         # a coordinate at a time
-        # print(v)
+        
+        if lbest == None:
+            lbest = c.copy()
+        if gbest == None:
+            gbest = c.copy()
+        if v == None:
+            v = self._generate_random_velocity(c.shape)
+
         for i in range(0, I):
             lnudge = (WL * r1 * (lbest[i] - c[i]))
             gnudge = (WG * r2 * (gbest[i] - c[i]))
