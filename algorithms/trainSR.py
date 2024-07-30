@@ -36,27 +36,48 @@ class trainSR():
         self.ignore_warning = ignore_warning
         
 
-    def fit(self, instances:List, info:List = None):
+    def fit(self, file_name:List, func:List, x_range:List=None,
+             n_points:List=None, info:List=None):
         """
             instances: List[Dict] = [ {"file_name": ..., "func": ...,}, ... ]
         """
 
+        if x_range is None:
+            x_range = [None for _ in file_name]
+        if n_points is None:
+            n_points = [None for _ in file_name]
+        if info is None:
+            info = [None for _ in file_name]
+
+        instances = [ 
+            {"file_name": file_name[i], "func": func[i], "x_range": x_range[i],
+             "n_points": n_points[i], "info": info[i]} 
+             for i in range(len(file_name))
+         ]
+        
         self.instances = instances
 
     def call_predict(self, SR:SymbolicRegression):
         return SR.predict()
 
     def runParallel(self, max_processes=8):
-        n_processes = len(self.instances[0])
+        n_processes = len(self.instances)
         if n_processes > max_processes: n_processes = max_processes
         # print(n_processes)
         # Every dict should be composed of {"feature_names": [options]}
         with Pool(processes=n_processes) as pool:
-            results = pool.map(self.testAlgorithm, *self.instances)
+            results = pool.map(self.testAlgorithm, self.instances)
         return results
     
-    def testAlgorithm(self, file_name, func, x_range=None, n_points=None,
-                       info:Dict = None):
+    def testAlgorithm(self, instances:Dict):
+
+        # Filtering
+        file_name = instances["file_name"]
+        func = instances["func"]
+        x_range = instances["x_range"]
+        n_points = instances["n_points"]
+        info = instances["info"]
+
         
         if self.ignore_warning:
             warnings.filterwarnings("ignore")
@@ -144,9 +165,10 @@ class trainSR():
             with open(file_path + f"/results.csv", "a") as file:
                 file.write(f"{SR.fitness_score(output_AEG)},{self.population},{self.generations},{end_time - start_time},{i}\n")
             
-            with open(file_path + "/info.csv", "w") as file:
-                for item in info.items():
-                    file.write(f"{item[0]}, {item[1]}\n")
+            if info is not None:
+                with open(file_path + "/info.csv", "w") as file:
+                    for item in info.items():
+                        file.write(f"{item[0]}, {item[1]}\n")
 
         
         return originX, originy, SR._operators, SR._functions   
