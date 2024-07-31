@@ -3,7 +3,7 @@ from CSOWP_SR import *
 from ExpressionTree import *
 
 if __name__ == '__main__':
-    TSR = trainSR("Outputs/tests", 100, 3, overwrite=True, n_points=1000, 
+    TSR = trainSR("Outputs/tests", 20, 3, overwrite=True, n_points=1000, 
                   x_range=[-5, 5], optimization_kind="LS", n_runs=1)
 
     file_names = ["test1", "test2", "test3", "test4"]

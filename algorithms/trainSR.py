@@ -41,7 +41,9 @@ class trainSR():
         
 
     def fit(self, file_name:List, func:List, x_range:List=None,
-             n_points:List=None, info:List=None):
+             n_points:List=None, info:List=None, functions:List=None,
+             operators:List=None, weights:List=None, 
+             custom_functions_dict:List=None):
         """
             instances: List[Dict] = [ {"file_name": ..., "func": ...,}, ... ]
         """
@@ -52,10 +54,21 @@ class trainSR():
             n_points = [None for _ in file_name]
         if info is None:
             info = [None for _ in file_name]
+        if functions is None:
+            functions = [None for _ in file_name]
+        if operators is None:
+            operators = [None for _ in file_name]
+        if weights is None:
+            weights = [None for _ in file_name]
+        if custom_functions_dict is None:
+            custom_functions_dict = [None for _ in file_name]
+        
 
         instances = [ 
             {"file_name": file_name[i], "func": func[i], "x_range": x_range[i],
-             "n_points": n_points[i], "info": info[i]} 
+             "n_points": n_points[i], "info": info[i], "functions": functions[i],
+             "operators": operators[i], "weights": weights[i], 
+             "custom_functions_dict": custom_functions_dict[i]}
              for i in range(len(file_name))
          ]
         
@@ -81,6 +94,10 @@ class trainSR():
         x_range = instances["x_range"]
         n_points = instances["n_points"]
         info = instances["info"]
+        functions = instances["functions"]
+        operators = instances["operators"]
+        weights = instances["weights"]
+        custom_functions_dict = instances["custom_functions_dict"]
 
         
         if self.ignore_warning:
