@@ -27,7 +27,6 @@ class trainSR():
         self.normalize_range = normalize_range
         self.overwrite = overwrite
         self.n_runs = n_runs
-        self.operators = operators
         self.functions = functions
         self.weights = weights
         self.island_interval = island_interval
@@ -38,10 +37,46 @@ class trainSR():
         self.n_points = n_points
         self.x_range = x_range
         self.ignore_warning = ignore_warning
+
+        if operators is None:
+            self.operators = {"+": lambda a,b: np.add(a,b), "-": lambda a,b: np.subtract(a,b),
+                                "*": lambda a,b: np.multiply(a, b), "/": lambda a,b: np.divide(a,b)}
+        else:
+            self.operators = operators
+        
+        if functions is None:
+            self.functions = {"abs": lambda a: np.abs(a), "exp": lambda a: np.exp(a), "square": lambda a: a**2,
+                            "cos": lambda a: np.cos(a),
+                            "sin": lambda a: np.sin(a), "tan": lambda a: np.tan(a), "tanh": lambda a: np.tanh(a),
+                            "sqrt": lambda a: np.sqrt(a), "log": lambda a: np.log(a)}
+        else:
+            self.functions = functions
+
+        if weights is None:
+            self.weights = {
+                "+": 1, "-": 1, "*": 2, "/": 2,
+                "sqrt": 3, "square": 2, "cube": 2, "quart": 2,
+                "log": 4, "exp": 4, "cos": 5, "sin": 5, 
+                "tan": 6, "tanh": 6, "abs": 1
+            }
+        else:
+            self.weights = weights
+        
+        if custom_functions_dict is None:
+            self.custom_functions_dict = {"sin": ["np.sin(",")"], "cos": ["np.cos(",")"],
+                                      "abs": ["np.abs(", ")"], "square": ["(", ")**2"],
+                                      "tan": ["np.tan(", ")"], "tanh": ["np.tanh(", ")"],
+                                      "exp": ["np.exp(", ")"], "sqrt": ["np.sqrt(", ")"],
+                                      "log": ["np.log(", ")"]
+                                      }
+        else:
+            self.custom_functions_dict = custom_functions_dict
         
 
     def fit(self, file_name:List, func:List, x_range:List=None,
-             n_points:List=None, info:List=None):
+             n_points:List=None, info:List=None, functions:List=None,
+             operators:List=None, weights:List=None, 
+             custom_functions_dict:List=None):
         """
             instances: List[Dict] = [ {"file_name": ..., "func": ...,}, ... ]
         """
@@ -52,14 +87,58 @@ class trainSR():
             n_points = [None for _ in file_name]
         if info is None:
             info = [None for _ in file_name]
+        if functions is None:
+            functions = [None for _ in file_name]
+        if operators is None:
+            operators = [None for _ in file_name]
+        if weights is None:
+            weights = [None for _ in file_name]
+        if custom_functions_dict is None:
+            custom_functions_dict = [None for _ in file_name]
+        
 
         instances = [ 
             {"file_name": file_name[i], "func": func[i], "x_range": x_range[i],
-             "n_points": n_points[i], "info": info[i]} 
+             "n_points": n_points[i], "info": info[i], "functions": functions[i],
+             "operators": operators[i], "weights": weights[i], 
+             "custom_functions_dict": custom_functions_dict[i]}
              for i in range(len(file_name))
          ]
         
         self.instances = instances
+
+    def addFunction(self, name, opts):
+        """
+            opts = {
+                "function": lambda ... : ...
+                "weight": 4
+                "custom_function_dict": []
+            }
+        """
+
+        if name not in self.functions:
+            self.functions[name] = opts["function"]
+            self.weights[name] = opts["weight"]
+            self.custom_functions_dict[name] = opts["custom_function_dict"]
+        else:
+            raise KeyError("Function already defined.")
+        
+    def addOperator(self, name, opts):
+        """
+            opts = {
+                "function": lambda ... : ...
+                "weight": 4
+                "custom_function_dict": []
+            }
+        """
+
+        if name not in self.functions:
+            self.operators[name] = opts["operator"]
+            self.weights[name] = opts["weight"]
+            self.custom_functions_dict[name] = opts["custom_function_dict"]
+        else:
+            raise KeyError("Operator already defined.")
+
 
     def call_predict(self, SR:SymbolicRegression):
         return SR.predict()
@@ -81,6 +160,23 @@ class trainSR():
         x_range = instances["x_range"]
         n_points = instances["n_points"]
         info = instances["info"]
+
+        raw_functions = self.functions if instances["functions"] is None else instances["functions"]
+        raw_operators = self.operators if instances["operators"] is None else instances["operators"]
+        weights = self.weights if instances["weights"] is None else instances["weights"]
+        custom_functions_dict = self.custom_functions_dict if instances["custom_functions_dict"] is None else instances["custom_functions_dict"]
+        
+        functions = {}
+        for f in raw_functions:
+            if f not in self.functions:
+                raise ModuleNotFoundError("""Function not found. Functions must be declared on init before utilized.""")
+            functions[f] = self.functions[f]
+
+        operators = {}
+        for o in raw_operators:
+            if o not in self.operators:
+                raise ModuleNotFoundError("""Operator not found. Operators must be declared on init before utilized.""")
+            operators[o] = self.operators[o]
 
         
         if self.ignore_warning:
@@ -136,9 +232,9 @@ class trainSR():
             print(f"-=-=-=-=-=-=-=-= Training for population {self.population} and generation {self.generations} - {file_path[file_path.find('/')+1:]} =-=-=-=-=-=-=-=-")
             SR = SymbolicRegression(self.generations, self.max_expression_size, max_population_size=self.population,
                                     max_island_count=int(self.population/10), random_const_range=self.const_range,
-                                    operators=self.operators, functions=self.functions, weights=self.weights,
+                                    operators=operators, functions=functions, weights=weights,
                                     island_interval=self.island_interval, optimization_kind=self.optimization_kind,
-                                    custom_functions_dict=self.custom_functions_dict)
+                                    custom_functions_dict=custom_functions_dict)
             SR.fit(np.c_[X], y, feature_names=["x"])    
             
             start_time = time()
