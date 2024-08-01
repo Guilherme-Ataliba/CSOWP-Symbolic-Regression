@@ -8,7 +8,7 @@ if __name__ == '__main__':
     #                 "custom_function_dict": {"exp-": ["np.exp(-", ")"]}}
 
     TSR = trainSR("Outputs/tests", 20, 3, overwrite=True, n_points=1000, 
-                  x_range=[-5, 5], optimization_kind="LS", n_runs=1)
+                  x_range=[-5, 5], optimization_kind="PSO_NEW", n_runs=1)
     
     TSR.addFunction("exp-", {
         "function": lambda a : np.exp(-a),
