@@ -160,6 +160,7 @@ class trainSR():
         x_range = instances["x_range"]
         n_points = instances["n_points"]
         info = instances["info"]
+        
 
         raw_functions = self.functions if instances["functions"] is None else instances["functions"]
         raw_operators = self.operators if instances["operators"] is None else instances["operators"]

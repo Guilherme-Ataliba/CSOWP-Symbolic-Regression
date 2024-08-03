@@ -852,7 +852,7 @@ class SymbolicRegression():
         #         return me.copy_AEG(), 0
 
 
-        if self.optimization_kind == "None":
+        if self.optimization_kind == "NoOpt":
             # Baseline for comparison, no optimization method
             me = me.copy_AEG()
             return me, 0
