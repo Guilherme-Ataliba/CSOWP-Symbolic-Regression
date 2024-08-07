@@ -4,9 +4,12 @@ from ExpressionTree import *
 import os
 
 if __name__ == '__main__':
+    # optimizations = [
+    #     "NoOpt", "PSO", "PSO_NEW", "LS", "random_LS",
+    #     "differential_evolution", "dual_annealing"
+    # ]
     optimizations = [
-        "NoOpt", "PSO", "PSO_NEW", "LS", "random_LS",
-        "differential_evolution", "dual_annealing"
+        "PSO_NEW"
     ]
 
     file_names = [
@@ -102,7 +105,7 @@ if __name__ == '__main__':
         if not os.path.isdir(current_path):
             os.mkdir(current_path)
 
-        TSR = trainSR(current_path, 4000, 8, overwrite=False, n_points=1000, 
+        TSR = trainSR(current_path, 20, 2, overwrite=True, n_points=1000, 
                     x_range=[-10, 15], optimization_kind=opt, n_runs=3, SEED=42)
         
         TSR.addFunction("exp-", {

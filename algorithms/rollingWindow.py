@@ -7,6 +7,7 @@ import warnings
 import os
 
 import matplotlib.pyplot as plt
+import matplotlib.patches as patches
 import seaborn as sns
 
 
@@ -58,6 +59,7 @@ class rollingWindow():
         elif nPics is None:
             self.nPics = (self.b-self.a)/L
 
+        self.nPics = int(self.nPics)
         self.stepSize = (self.b - self.a)/self.nPics
 
 
@@ -139,4 +141,32 @@ class rollingWindow():
             y = func(X)
             plt.plot(X, y, label=c)
         plt.legend()
+        plt.show()
+
+    def visualize(self, bg_palette="inferno", bg_alpha=0.2,
+                  bg_linecolor="black", bg_linewidth=1,
+                  linecolor="black", linewidth=3,
+                  linestyle="dashed"):
+        ax = plt.gca()
+        ax.plot(self.X, self.y, linewidth=linewidth, 
+                c=linecolor, linestyle=linestyle)
+        ax.set_xlim(self.X.min(), self.X.max())
+        ax.set_ylim(self.y.min(), self.y.max())
+
+        color_palette = sns.color_palette(bg_palette, self.nPics)
+
+        Xmin = self.X.min()
+        ymin = self.y.min()
+        ymax = abs(self.y.min() - self.y.max())
+
+        # Add a rectangle with a background color
+        for c in range(self.nPics):
+            x_start = Xmin + c*self.stepSize
+
+            rect = patches.Rectangle((x_start, ymin), self.L, ymax,
+                                      linewidth=bg_linewidth, edgecolor=bg_linecolor,
+                                        facecolor=color_palette[c], alpha=bg_alpha)
+            ax.add_patch(rect)
+
+        # Display the plot
         plt.show()
