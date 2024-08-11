@@ -8,9 +8,7 @@ if __name__ == '__main__':
     #     "NoOpt", "PSO", "PSO_NEW", "LS", "random_LS",
     #     "differential_evolution", "dual_annealing"
     # ]
-    optimizations = [
-        "PSO_NEW"
-    ]
+    optimizations = ["PSO_NEW"]
 
     file_names = [
         "F1_specific", "F4_specific", "F5_specific", 
@@ -105,7 +103,7 @@ if __name__ == '__main__':
         if not os.path.isdir(current_path):
             os.mkdir(current_path)
 
-        TSR = trainSR(current_path, 20, 2, overwrite=True, n_points=1000, 
+        TSR = trainSR(current_path, 200, 4, overwrite=True, n_points=1000, 
                     x_range=[-10, 15], optimization_kind=opt, n_runs=3, SEED=42)
         
         TSR.addFunction("exp-", {

@@ -154,6 +154,10 @@ class trainSR():
     
     def testAlgorithm(self, instances:Dict):
 
+        for element in ["file_name", "func", "x_range", "n_points", "info", "functions", "operators", "weights", "custom_functions_dict"]:
+            if element not in instances:
+                instances[element] = None
+
         # Filtering
         file_name = instances["file_name"]
         func = instances["func"]
