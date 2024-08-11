@@ -9,6 +9,7 @@ from scipy.optimize import curve_fit, differential_evolution, dual_annealing
 from copy import deepcopy
 import pickle
 import pyswarms
+import warnings
 
 class Particle():
     "v: velocity vector"
@@ -852,6 +853,21 @@ class SymbolicRegression():
         #         return me.copy_AEG(), 0
 
 
+
+        # Dealing with nans and infs
+        x_data = self._features[self._feature_names[0]].copy()
+        y_data = self.y.copy()
+        valid_indices = ~np.isnan(x_data) & ~np.isnan(y_data) & np.isfinite(x_data) & np.isfinite(y_data)
+        X_filtered = x_data[valid_indices]
+        y_filtered = y_data[valid_indices]
+
+        if len(X_filtered) <= 0  or len(y_filtered) <= 0:
+            warnings.warn("X array interely made off nans or infs encountered.", RuntimeWarning)
+            print("X array interely made off nans or infs encountered.")
+            return me.copy_AEG(), 0
+
+
+
         if self.optimization_kind == "NoOpt":
             # Baseline for comparison, no optimization method
             me = me.copy_AEG()
@@ -892,10 +908,10 @@ class SymbolicRegression():
 
             def cost_function(params):
                 func = self.toFunc(me)
-                X = np.c_[self._features[self._feature_names[0]]]
-                y = np.c_[self.y]
+                X = np.c_[X_filtered]
+                y = np.c_[y_filtered]
                 y_pred = eval(fcall_string)
-                return np.mean((np.c_[self.y] - y_pred)**2, axis=0)            
+                return np.mean((np.c_[y_filtered] - y_pred)**2, axis=0)            
 
             # Call instance of PSO
             optimizer = pyswarms.single.GlobalBestPSO(n_particles=n_particles, dimensions=n_params, options=options)
@@ -921,7 +937,7 @@ class SymbolicRegression():
             try:
                 # print(me.pool[0].vector)
                 params, _ = curve_fit(self.toFunc(me), 
-                                      self._features[self._feature_names[0]], self.y, me.pool[0].vector)
+                                      X_filtered, y_filtered, me.pool[0].vector)
                 # print(params)
                 particle = Particle(params, 
                                     self._generate_random_velocity(me.pool[0].vector.shape[0]),
@@ -947,7 +963,7 @@ class SymbolicRegression():
                                           high=self.random_const_range[1],
                                           size=len(me.pool[0].vector))
                 params, _ = curve_fit(self.toFunc(me),
-                                       self._features[self._feature_names[0]], self.y, guess)
+                                       X_filtered, y_filtered, guess)
 
                 particle = Particle(params, 
                                     self._generate_random_velocity(me.pool[0].vector.shape[0]),
@@ -972,7 +988,7 @@ class SymbolicRegression():
             n_params = len(me.pool[0].vector)
 
             def cost_function(params):
-                X = self._features[self._feature_names[0]]
+                X = X_filtered
                 y_pred = func(X, *params)
                 return np.mean((self.y - y_pred)**2)
             
@@ -999,7 +1015,7 @@ class SymbolicRegression():
             n_params = len(me.pool[0].vector)
 
             def cost_function(params):
-                X = self._features[self._feature_names[0]]
+                X = X_filtered
                 y_pred = func(X, *params)
                 return np.mean((self.y - y_pred)**2)
             

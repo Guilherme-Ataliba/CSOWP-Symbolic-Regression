@@ -11,7 +11,8 @@ from CSOWP_SR import *
 from ExpressionTree import *
 
 class trainSR():
-    def __init__(self, dir_path, population, generations, max_expression_size=None,
+    def __init__(self, population, generations,
+                 dir_path=None, max_expression_size=None,
                  normalize=False, const_range=(0,1), normalize_range=(0,1),
                  n_points=None, x_range=None, ignore_warning=True, overwrite=False, n_runs=1, operators=None,
                  functions=None, weights=None, island_interval=None,
@@ -202,16 +203,17 @@ class trainSR():
             raise TypeError("Info must be a dictionary.")
 
         # Initial Definitions ==============================
-        file_path = os.path.join(self.dir_path, file_name)
-        if not os.path.isdir(file_path): 
-            os.mkdir(file_path,)
-            os.mkdir(file_path + "/data")
-            os.mkdir(file_path + "/trees")
-        if os.path.isfile(file_path + "/results.csv") and not self.overwrite:
-            raise OSError("File exists")
-        else:
-            with open(file_path + "/results.csv", "w") as file:
-                file.write("MSE_error,population,generations,training_time,i_run\n")
+        if self.dir_path is not None:
+            file_path = os.path.join(self.dir_path, file_name)
+            if not os.path.isdir(file_path): 
+                os.mkdir(file_path,)
+                os.mkdir(file_path + "/data")
+                os.mkdir(file_path + "/trees")
+            if os.path.isfile(file_path + "/results.csv") and not self.overwrite:
+                raise OSError("File exists")
+            else:
+                with open(file_path + "/results.csv", "w") as file:
+                    file.write("MSE_error,population,generations,training_time,i_run\n")
 
 
         # Defining the data ================================
@@ -234,7 +236,7 @@ class trainSR():
 
         # Training the model ===============================
         for i in range(self.n_runs):
-            print(f"-=-=-=-=-=-=-=-= Training for population {self.population} and generation {self.generations} - {file_path[file_path.find('/')+1:]} =-=-=-=-=-=-=-=-")
+            print(f"-=-=-=-=-=-=-=-= Training for population {self.population} and generation {self.generations} - {file_name} =-=-=-=-=-=-=-=-")
             SR = SymbolicRegression(self.generations, self.max_expression_size, max_population_size=self.population,
                                     max_island_count=int(self.population/10), random_const_range=self.const_range,
                                     operators=operators, functions=functions, weights=weights,
@@ -250,7 +252,7 @@ class trainSR():
             end_time = time()
             data = SR.evaluate_tree(output_AEG.sexp)
             
-            print(f"-=-=-=-=-=-=-= Done training for population {self.population} and generation {self.generations} - {file_path[file_path.find('/')+1:]} =-=-=-=-=-=-=-")
+            print(f"-=-=-=-=-=-=-= Done training for population {self.population} and generation {self.generations} - {file_name} =-=-=-=-=-=-=-")
 
             # Writing the data =================================
 
@@ -264,16 +266,17 @@ class trainSR():
             # graph = output_AEG.sexp.visualize_tree()
             # graph.render(dir_path + f"/trees/tree-{population}", format="svg")
 
-            with open(file_path + f"/trees/tree-{self.population}-{self.generations}-{i}", "wb") as file:
-                pickle.dump(output_AEG.sexp, file)
+            if self.dir_path is not None:
+                with open(file_path + f"/trees/tree-{self.population}-{self.generations}-{i}", "wb") as file:
+                    pickle.dump(output_AEG.sexp, file)
 
-            with open(file_path + f"/results.csv", "a") as file:
-                file.write(f"{SR.fitness_score(output_AEG)},{self.population},{self.generations},{end_time - start_time},{i}\n")
-            
-            if info is not None:
-                with open(file_path + "/info.csv", "w") as file:
-                    for item in info.items():
-                        file.write(f"{item[0]}, {item[1]}\n")
+                with open(file_path + f"/results.csv", "a") as file:
+                    file.write(f"{SR.fitness_score(output_AEG)},{self.population},{self.generations},{end_time - start_time},{i}\n")
+                
+                if info is not None:
+                    with open(file_path + "/info.csv", "w") as file:
+                        for item in info.items():
+                            file.write(f"{item[0]}, {item[1]}\n")
 
         
         return originX, originy, SR._operators, SR._functions   
