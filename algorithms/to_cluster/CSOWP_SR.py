@@ -938,6 +938,9 @@ class SymbolicRegression():
                 # print(me.pool[0].vector)
                 params, _ = curve_fit(self.toFunc(me), 
                                       X_filtered, y_filtered, me.pool[0].vector)
+                if np.nan in params:
+                    return me, 0
+
                 # print(params)
                 particle = Particle(params, 
                                     self._generate_random_velocity(me.pool[0].vector.shape[0]),
@@ -949,7 +952,7 @@ class SymbolicRegression():
                 me.sexp = self._convert_to_ExpTree(me)
                 # print("reached")
             except RuntimeError:
-                params = me.pool[0]
+                return me, 0
             
             return me, 0
     

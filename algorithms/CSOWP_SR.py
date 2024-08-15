@@ -938,6 +938,7 @@ class SymbolicRegression():
                 # print(me.pool[0].vector)
                 params, _ = curve_fit(self.toFunc(me), 
                                       X_filtered, y_filtered, me.pool[0].vector)
+                
                 # print(params)
                 particle = Particle(params, 
                                     self._generate_random_velocity(me.pool[0].vector.shape[0]),

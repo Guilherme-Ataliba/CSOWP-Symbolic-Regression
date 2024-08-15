@@ -9,8 +9,8 @@ if __name__ == '__main__':
     #     "differential_evolution", "dual_annealing"
     # ]
     optimizations = [
-        "PSO_NEW", "LS", "random_LS",
-        "differential_evolution", "dual_annealing"
+        "LS", "random_LS",
+        "differential_evolution", "dual_annealing", "PSO_NEW"
     ]
 
     file_names = [
