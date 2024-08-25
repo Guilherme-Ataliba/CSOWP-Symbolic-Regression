@@ -1,4 +1,4 @@
-import numpy
+import numpy as np
 from sklearn.preprocessing import MinMaxScaler
 from time import time
 import os
@@ -9,6 +9,7 @@ from pathos.multiprocessing import ProcessingPool as Pool
 import typing
 from CSOWP_SR import *
 from ExpressionTree import *
+import logging
 
 class trainSR():
     def __init__(self, population, generations,
@@ -73,6 +74,8 @@ class trainSR():
         else:
             self.custom_functions_dict = custom_functions_dict
         
+        logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(processName)s - %(levelname)s - %(message)s')
+
 
     def fit(self, file_name:List, func:List, x_range:List=None,
              n_points:List=None, info:List=None, functions:List=None,
@@ -97,6 +100,7 @@ class trainSR():
         if custom_functions_dict is None:
             custom_functions_dict = [None for _ in file_name]
         
+        
 
         instances = [ 
             {"file_name": file_name[i], "func": func[i], "x_range": x_range[i],
@@ -106,6 +110,9 @@ class trainSR():
              for i in range(len(file_name))
          ]
         
+        # logger = logging.getLogger()
+        # logger.info(f"print 2 - {instances[0]['func'](2)}")
+
         self.instances = instances
 
     def addFunction(self, name, opts):
@@ -155,13 +162,19 @@ class trainSR():
     
     def testAlgorithm(self, instances:Dict):
 
+        func = eval(instances["func"])
+
+        # logger = logging.getLogger()
+        # logger.info(f"Processing instance: {instances}")
+        # logger.info(f"print 2 - {func(2)}")
+
         for element in ["file_name", "func", "x_range", "n_points", "info", "functions", "operators", "weights", "custom_functions_dict"]:
             if element not in instances:
                 instances[element] = None
 
         # Filtering
         file_name = instances["file_name"]
-        func = instances["func"]
+        # func = instances["func"]
         x_range = instances["x_range"]
         n_points = instances["n_points"]
         info = instances["info"]
@@ -238,7 +251,7 @@ class trainSR():
         for i in range(self.n_runs):
             print(f"-=-=-=-=-=-=-=-= Training for population {self.population} and generation {self.generations} - {file_name} =-=-=-=-=-=-=-=-")
             SR = SymbolicRegression(self.generations, self.max_expression_size, max_population_size=self.population,
-                                    max_island_count=int(self.population/10), random_const_range=self.const_range,
+                                    max_island_count=int(np.ceil(self.population/10)), random_const_range=self.const_range,
                                     operators=operators, functions=functions, weights=weights,
                                     island_interval=self.island_interval, optimization_kind=self.optimization_kind,
                                     custom_functions_dict=custom_functions_dict)

@@ -9,8 +9,8 @@ if __name__ == '__main__':
     #     "differential_evolution", "dual_annealing"
     # ]
     optimizations = [
-        "LS", "random_LS",
-        "differential_evolution", "dual_annealing", "PSO_NEW"
+        "PSO_NEW", "LS", "random_LS",
+        "differential_evolution", "dual_annealing"
     ]
 
     file_names = [
@@ -24,23 +24,23 @@ if __name__ == '__main__':
     ]
 
     funcs_dict = {
-        "F1_specific": lambda x: 1.57 + 24.3*x, "F4_specific": lambda x: -2.3 + 0.13*np.sin(x), 
-        "F5_specific": lambda x: 3 + 2.13*np.log(x), "F6_specific": lambda x: 1.3 + 0.13*np.sqrt(x),
-        "F7_specific": lambda x: 213.809408*(1-np.exp(-0.547237*x)), 
-        "F11_specific": lambda x: 6.87 + 11*np.cos(7.23*x**3),
-        "F1": lambda x: 1.57 + 24.3*x, "F4": lambda x: -2.3 + 0.13*np.sin(x), 
-        "F5": lambda x: 3 + 2.13*np.log(x), "F6": lambda x: 1.3 + 0.13*np.sqrt(x),
-        "F7": lambda x: 213.809408*(1-np.exp(-0.547237*x)), 
-        "F11": lambda x: 6.87 + 11*np.cos(7.23*x**3),
-        "logistic_specified": lambda x: 10*np.exp(-0.5*np.exp(-0.5*x + 2)),
-        "logistic": lambda x: 10*np.exp(-0.5*np.exp(-0.5*x + 2)),
-        "logistic_noTanh": lambda x: 10*np.exp(-0.5*np.exp(-0.5*x + 2)),
-        "projectile_motion_specific": lambda x: 6*x -9.8*x**2,
-        "projectile_motion": lambda x: 6*x -9.8*x**2,
-        "damped_pendulum_specific": lambda x: np.exp(-x/10)*(3*np.cos(2*x)),
-        "damped_pendulum": lambda x: np.exp(-x/10)*(3*np.cos(2*x)),
-        "radioactive_decay_specific": lambda x: 10*np.exp(-0.5*x), 
-        "radioactive_decay": lambda x: 10*np.exp(-0.5*x)
+        "F1_specific": "lambda x: 1.57 + 24.3*x", "F4_specific": "lambda x: -2.3 + 0.13*np.sin(x)", 
+        "F5_specific": "lambda x: 3 + 2.13*np.log(x)", "F6_specific": "lambda x: 1.3 + 0.13*np.sqrt(x)",
+        "F7_specific": "lambda x: 213.809408*(1-np.exp(-0.547237*x))", 
+        "F11_specific": "lambda x: 6.87 + 11*np.cos(7.23*x**3)",
+        "F1": "lambda x: 1.57 + 24.3*x", "F4": "lambda x: -2.3 + 0.13*np.sin(x)", 
+        "F5": "lambda x: 3 + 2.13*np.log(x)", "F6": "lambda x: 1.3 + 0.13*np.sqrt(x)",
+        "F7": "lambda x: 213.809408*(1-np.exp(-0.547237*x))", 
+        "F11": "lambda x: 6.87 + 11*np.cos(7.23*x**3)",
+        "logistic_specified": "lambda x: 10*np.exp(-0.5*np.exp(-0.5*x + 2))",
+        "logistic": "lambda x: 10*np.exp(-0.5*np.exp(-0.5*x + 2))",
+        "logistic_noTanh": "lambda x: 10*np.exp(-0.5*np.exp(-0.5*x + 2))",
+        "projectile_motion_specific": "lambda x: 6*x -9.8*x**2",
+        "projectile_motion": "lambda x: 6*x -9.8*x**2",
+        "damped_pendulum_specific": "lambda x: np.exp(-x/10)*(3*np.cos(2*x))",
+        "damped_pendulum": "lambda x: np.exp(-x/10)*(3*np.cos(2*x))",
+        "radioactive_decay_specific": "lambda x: 10*np.exp(-0.5*x)", 
+        "radioactive_decay": "lambda x: 10*np.exp(-0.5*x)"
     }
     funcs = list(funcs_dict.values())
 
@@ -95,7 +95,6 @@ if __name__ == '__main__':
     print(functions)
     print(x_ranges)
     print(len(file_names), len(funcs), len(infos), len(functions), len(x_ranges))
-    print(optimizations)
 
     for name in file_names:
         if name not in x_ranges_dict:
@@ -108,7 +107,7 @@ if __name__ == '__main__':
             os.mkdir(current_path)
 
         TSR = trainSR(2000, 6, dir_path=current_path, overwrite=True, 
-        n_points=1000, x_range=[-10, 15], optimization_kind=opt, n_runs=1, SEED=42)
+        n_points=1000, x_range=[-10, 15], optimization_kind=opt, n_runs=3, SEED=42)
         
         TSR.addFunction("exp-", {
             "function": lambda a : np.exp(-a),

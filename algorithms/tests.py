@@ -19,7 +19,7 @@ if __name__ == "__main__":
     # SR.fit(np.c_[X], y, feature_names=["x"])
     # print(SR.evaluate_tree(tree))
 
-    TSR = trainSR(population=20, generations=2, dir_path=None, x_range=(-5, -1),
+    TSR = trainSR(population=2, generations=2, dir_path=None, x_range=(-5, -1),
                 n_points=1000, optimization_kind="LS")
     TSR.fit(file_name=["oi", "ola"], func=[func, func])
     TSR.runParallel(max_processes=2)

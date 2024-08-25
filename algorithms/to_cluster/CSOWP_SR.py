@@ -10,6 +10,7 @@ from copy import deepcopy
 import pickle
 import pyswarms
 import warnings
+import logging
 
 class Particle():
     "v: velocity vector"
@@ -112,7 +113,7 @@ class SymbolicRegression():
                 "_operators", "_functions", "_options", "_operators_func", "_functions_func", "_features", 
                 "max_island_count", "max_island_size", "_weights", "max_pool_size", "random_const_range",
                 "_mult_tree", "_add_tree", "_linear_tree", "island_interval", "optimization_kind", "custom_functions_dict")
-    def __init__(self, G, label_name="y", max_population_size=5000, max_expression_size = 5, max_island_count=None, 
+    def __init__(self, G, feature_names=None, label_name="y", max_population_size=5000, max_expression_size = 5, max_island_count=None, 
                 max_island_size=None, max_pool_size = 15, random_const_range=(0,1), operators=None, functions=None, weights=None,
                 island_interval=None, optimization_kind="PSO", custom_functions_dict=None):
         """
@@ -334,6 +335,8 @@ class SymbolicRegression():
         #Dealing with abstract constants
         func_string = func_string.replace("[", "").replace("]", "") 
         
+        # print(func_string)
+
         features = ""
         for i in range(len(self._feature_names)-1):
             features += self._feature_names[i]
@@ -938,9 +941,7 @@ class SymbolicRegression():
                 # print(me.pool[0].vector)
                 params, _ = curve_fit(self.toFunc(me), 
                                       X_filtered, y_filtered, me.pool[0].vector)
-                if np.nan in params:
-                    return me, 0
-
+                
                 # print(params)
                 particle = Particle(params, 
                                     self._generate_random_velocity(me.pool[0].vector.shape[0]),
@@ -952,7 +953,7 @@ class SymbolicRegression():
                 me.sexp = self._convert_to_ExpTree(me)
                 # print("reached")
             except RuntimeError:
-                return me, 0
+                params = me.pool[0]
             
             return me, 0
     

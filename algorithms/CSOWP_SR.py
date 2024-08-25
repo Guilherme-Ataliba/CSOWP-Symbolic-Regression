@@ -10,6 +10,7 @@ from copy import deepcopy
 import pickle
 import pyswarms
 import warnings
+import logging
 
 class Particle():
     "v: velocity vector"
@@ -334,6 +335,8 @@ class SymbolicRegression():
         #Dealing with abstract constants
         func_string = func_string.replace("[", "").replace("]", "") 
         
+        # print(func_string)
+
         features = ""
         for i in range(len(self._feature_names)-1):
             features += self._feature_names[i]
