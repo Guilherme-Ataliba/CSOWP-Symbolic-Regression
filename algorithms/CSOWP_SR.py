@@ -11,6 +11,7 @@ import pickle
 import pyswarms
 import warnings
 import logging
+import traceback
 
 class Particle():
     "v: velocity vector"
@@ -1314,44 +1315,58 @@ class SymbolicRegression():
 
 
             # Everyone gets mutated and crossed over
-                
+            
             for p in range(0, P):
-                # print("p:", p)
-                Ic = 0
-                
-                lamb, Ic = self.optimizeConstants(in_population[p], g, Ic, check_pool=True)
-                out_population = self.insertLambda(out_population, lamb)
-                lamb = self.mutateSExp(in_population[p])
-                out_population = self.insertLambda(out_population, lamb)
-                dad = in_population[p] # every one gets crossed over (gets to be a dad)
-                
-                
-                # Cross over partner must be from the same island 
-                if dad.sexp.island is None: 
-                    # Have no ideia why this bug happens sometimes, some individuals get here without a defined island
-                    print("empty dad island")
-                    display(dad.sexp.visualize_tree())
-                    K_original = 0
-                else:
-                    K_original = dad.sexp.island
-
                 try:
-                    K = np.random.randint(K_original-self.island_interval[0], K_original+self.island_interval[1]+1)
-                except:
-                    print(K_original, type(K_original), self.island_interval[0], type(self.island_interval[0]))
-                    raise NotImplementedError("Erro!")
-                
-                if K < 0: K=0
-                if K >= len(islands): K = len(islands)-1
+                    # print("p:", p)
+                    Ic = 0
+                    
+                    lamb, Ic = self.optimizeConstants(in_population[p], g, Ic, check_pool=True)
+                    out_population = self.insertLambda(out_population, lamb)
+                    lamb = self.mutateSExp(in_population[p])
+                    out_population = self.insertLambda(out_population, lamb)
+                    dad = in_population[p] # every one gets crossed over (gets to be a dad)
+                    
+                    
+                    # Cross over partner must be from the same island 
+                    if dad.sexp.island is None: 
+                        # Have no ideia why this bug happens sometimes, some individuals get here without a defined island
+                        print("empty dad island")
+                        # display(dad.sexp.visualize_tree())
+                        K_original = 0
+                    else:
+                        K_original = dad.sexp.island
 
-                if type(islands[K]) is int:
-                    K = K_original
-                
+                    try:
+                        K = np.random.randint(K_original-self.island_interval[0], K_original+self.island_interval[1]+1)
+                    except:
+                        print(K_original, type(K_original), self.island_interval[0], type(self.island_interval[0]))
+                        raise NotImplementedError("Erro!")
+                    
+                    if K < 0: K=0
+                    if K >= len(islands): K = len(islands)-1
 
-                i = randint(0, len(islands[K])-1)  # Choosing a random individual from island K
-                mom = islands[K][i]   # Getting a random tree from the same island as dad
-                lamb = self.crossoverSExp(dad, mom)
-                out_population = self.insertLambda(out_population, lamb)
+                    if type(islands[K]) is int:
+                        K = K_original
+                    
+
+                    i = randint(0, len(islands[K])-1)  # Choosing a random individual from island K
+                    mom = islands[K][i]   # Getting a random tree from the same island as dad
+                    lamb = self.crossoverSExp(dad, mom)
+                    out_population = self.insertLambda(out_population, lamb)
+
+
+                except NameError as Error:
+                    """A error is occuring as nan is unkown when i try to call evaluate tree. The problem is that this error only occured when ran on a cluster 6h and 30min running. I can't reproduce it on a lower execution time, so for the time being i'm just catching it and substituting the tree by a new random one"""
+
+
+                    logging.basicConfig(level=logging.INFO, 
+                        format='%(asctime)s - %(processName)s - %(levelname)s - %(message)s')
+                    logging.error("-------------------------\n" + "Name error occured as \n" + traceback.format_exc() + "\n-------------------------")
+                    in_population[p] = self.generate_expr()
+
+
+
             
             champ, islands, in_population = self.populationPruning(out_population, in_population, islands)
 
