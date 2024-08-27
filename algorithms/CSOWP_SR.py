@@ -888,6 +888,8 @@ class SymbolicRegression():
         if self.optimization_kind == "PSO_NEW":
             me = me.copy_AEG()
 
+            # TO REMOVE
+            
             # Set-up hyperparameters
             options = {'c1': 0.5, 'c2': 0.3, 'w':0.9}
             n_particles = 30
@@ -920,18 +922,26 @@ class SymbolicRegression():
             # Call instance of PSO
             optimizer = pyswarms.single.GlobalBestPSO(n_particles=n_particles, dimensions=n_params, options=options)
 
-            # Perform optimization
-            _, pos = optimizer.optimize(cost_function, iters=iterations, verbose=False)  
+            try:
+                # Perform optimization
+                _, pos = optimizer.optimize(cost_function, iters=iterations, verbose=False)  
 
 
-            particle = Particle(pos, 
-                                    self._generate_random_velocity(me.pool[0].vector.shape[0]),
-                                    me.pool[0].vector)  
-            me.pool.append(particle)
-            me.pool = self.sort_pool_array(me)
-            me.c = me.pool[0]
-            me.sexp.fitness_score = self.fitness_score(me)
-            me.sexp = self._convert_to_ExpTree(me)            
+                particle = Particle(pos, 
+                                        self._generate_random_velocity(me.pool[0].vector.shape[0]),
+                                        me.pool[0].vector)  
+                me.pool.append(particle)
+                me.pool = self.sort_pool_array(me)
+                me.c = me.pool[0]
+                me.sexp.fitness_score = self.fitness_score(me)
+                me.sexp = self._convert_to_ExpTree(me)      
+            
+            except ValueError:
+                logging.basicConfig(level=logging.ERROR, filename='error.log', format='%(asctime)s - %(levelname)s - %(message)s')
+                logging.info(f"Raised error in NEW_PSO optimization. The fcall_string was {fcall_string}.")
+
+                print(f"Raised error in NEW_PSO optimization. The fcall_string was {fcall_string}.")
+                
 
             return me, 0
         
@@ -952,6 +962,14 @@ class SymbolicRegression():
                 me.c = me.pool[0]
                 me.sexp.fitness_score = self.fitness_score(me)
                 me.sexp = self._convert_to_ExpTree(me)
+
+                # TO REMOVE
+                # try:
+                #     self.toFunc(me)
+                # except:
+                #     logging.basicConfig(level=logging.ERROR, filename='error.log', format='%(asctime)s - %(levelname)s - %(message)s')
+                #     logging.info(f"Raised error after LS optimization. Params are {params}")
+                #     print(f"Raised error after LS optimization. Params are {params}")
                 # print("reached")
             except RuntimeError:
                 params = me.pool[0]
@@ -1317,54 +1335,42 @@ class SymbolicRegression():
             # Everyone gets mutated and crossed over
             
             for p in range(0, P):
+                # print("p:", p)
+                Ic = 0
+                
+                lamb, Ic = self.optimizeConstants(in_population[p], g, Ic, check_pool=True)
+                out_population = self.insertLambda(out_population, lamb)
+                lamb = self.mutateSExp(in_population[p])
+                out_population = self.insertLambda(out_population, lamb)
+                dad = in_population[p] # every one gets crossed over (gets to be a dad)
+                
+                
+                # Cross over partner must be from the same island 
+                if dad.sexp.island is None: 
+                    # Have no ideia why this bug happens sometimes, some individuals get here without a defined island
+                    print("empty dad island")
+                    # display(dad.sexp.visualize_tree())
+                    K_original = 0
+                else:
+                    K_original = dad.sexp.island
+
                 try:
-                    # print("p:", p)
-                    Ic = 0
-                    
-                    lamb, Ic = self.optimizeConstants(in_population[p], g, Ic, check_pool=True)
-                    out_population = self.insertLambda(out_population, lamb)
-                    lamb = self.mutateSExp(in_population[p])
-                    out_population = self.insertLambda(out_population, lamb)
-                    dad = in_population[p] # every one gets crossed over (gets to be a dad)
-                    
-                    
-                    # Cross over partner must be from the same island 
-                    if dad.sexp.island is None: 
-                        # Have no ideia why this bug happens sometimes, some individuals get here without a defined island
-                        print("empty dad island")
-                        # display(dad.sexp.visualize_tree())
-                        K_original = 0
-                    else:
-                        K_original = dad.sexp.island
+                    K = np.random.randint(K_original-self.island_interval[0], K_original+self.island_interval[1]+1)
+                except:
+                    print(K_original, type(K_original), self.island_interval[0], type(self.island_interval[0]))
+                    raise NotImplementedError("Erro!")
+                
+                if K < 0: K=0
+                if K >= len(islands): K = len(islands)-1
 
-                    try:
-                        K = np.random.randint(K_original-self.island_interval[0], K_original+self.island_interval[1]+1)
-                    except:
-                        print(K_original, type(K_original), self.island_interval[0], type(self.island_interval[0]))
-                        raise NotImplementedError("Erro!")
-                    
-                    if K < 0: K=0
-                    if K >= len(islands): K = len(islands)-1
+                if type(islands[K]) is int:
+                    K = K_original
+                
 
-                    if type(islands[K]) is int:
-                        K = K_original
-                    
-
-                    i = randint(0, len(islands[K])-1)  # Choosing a random individual from island K
-                    mom = islands[K][i]   # Getting a random tree from the same island as dad
-                    lamb = self.crossoverSExp(dad, mom)
-                    out_population = self.insertLambda(out_population, lamb)
-
-
-                except NameError as Error:
-                    """A error is occuring as nan is unkown when i try to call evaluate tree. The problem is that this error only occured when ran on a cluster 6h and 30min running. I can't reproduce it on a lower execution time, so for the time being i'm just catching it and substituting the tree by a new random one"""
-
-
-                    logging.basicConfig(level=logging.INFO, 
-                        format='%(asctime)s - %(processName)s - %(levelname)s - %(message)s')
-                    logging.error("-------------------------\n" + "Name error occured as \n" + traceback.format_exc() + "\n-------------------------")
-                    in_population[p] = self.generate_expr()
-
+                i = randint(0, len(islands[K])-1)  # Choosing a random individual from island K
+                mom = islands[K][i]   # Getting a random tree from the same island as dad
+                lamb = self.crossoverSExp(dad, mom)
+                out_population = self.insertLambda(out_population, lamb)
 
 
             
