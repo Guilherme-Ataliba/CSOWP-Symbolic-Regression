@@ -930,8 +930,6 @@ class SymbolicRegression():
             def cost_function_wrapper(params):
                 arr = np.array([cost_function(p, X_filtered, y_filtered) for p in params])
                 return arr
-            
-            print("esse aqui ó")
 
             # Call instance of PSO
             optimizer = pyswarms.single.GlobalBestPSO(n_particles=n_particles, dimensions=n_params, options=options)
