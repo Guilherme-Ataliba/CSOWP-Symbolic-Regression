@@ -865,22 +865,19 @@ class SymbolicRegression():
 
 
         # Dealing with nans and infs - From the input functions
-        x_data = self._features[self._feature_names[0]].copy()
-        y_data = self.y.copy()
-        X_filtered = x_data
-        y_filtered = y_data
-        
+        X_filtered = self._features[self._feature_names[0]].copy()
+        y_filtered = self.y.copy()
+
         # Se um individuo gera um resultado com nans ou inf que não estavam no conjunto original vamos descarta-lo. 
-        
-        # func = self.toFunc(me)
-        # y_test = func(X_filtered, *me.c)
-        # valid_indices = ~np.isnan(y_test) & np.isfinite(y_test)
-        # if False in valid_indices:
-        #     return me, 0
-
-
-
-
+        func = self.toFunc(me)
+        y_test = func(X_filtered, *me.pool[0].vector)
+            # Sometimes the func evaluation may return a single constant. This happens when it doesnt utilize a feature in the tree. That's why the if
+        if type(y_test) is np.ndarray:
+            valid_indices = ~np.isnan(y_test) & np.isfinite(y_test)
+            if False in valid_indices:
+                return me, 0
+        elif y_test is np.nan:
+            return me, 0
 
 
 
@@ -935,7 +932,18 @@ class SymbolicRegression():
             optimizer = pyswarms.single.GlobalBestPSO(n_particles=n_particles, dimensions=n_params, options=options)
 
             # Perform optimization
-            _, pos = optimizer.optimize(cost_function_wrapper, iters=iterations, verbose=False)  
+            try:
+                _, pos = optimizer.optimize(cost_function_wrapper, iters=iterations, verbose=False)  
+            except Exception as e:
+                logging.basicConfig(level=logging.ERROR, filename='error.log', format='%(asctime)s - %(levelname)s - %(message)s')
+
+                tree = [element.element() for element in me.sexp.preorder()]
+                func = self.toFunc(me)
+                X = X_filtered
+                y = y_filtered
+                y_pred = eval(fcall_string)
+                
+                logging.info(f"Raised error after NEW_PSO optimization. \nTree:{tree}\nfcallstring: {fcall_string}\ny_pred:{y_pred}")
 
 
             particle = Particle(pos, 
@@ -959,11 +967,40 @@ class SymbolicRegression():
         if self.optimization_kind == "LS":
             me = me.copy_AEG()
             
-            # try:
+
+            # If it can't reach the minimum it'll raise an error
+            try:
             # print(me.pool[0].vector)
-            params, _ = curve_fit(self.toFunc(me), 
-                                    X_filtered, y_filtered, me.pool[0].vector)
-            
+                params, _ = curve_fit(self.toFunc(me), 
+                                        X_filtered, y_filtered, me.pool[0].vector)
+            except RuntimeError:
+                return me, 0
+
+            # If the result of optimization is nan
+            if type(params) is list:
+                if np.nan in params:
+                    return me, 0
+            elif np.nan is params:
+                return me, 0
+
+            # TO REMOVE
+            try:
+                particle = Particle(params, 
+                                self._generate_random_velocity(me.pool[0].vector.shape[0]),
+                                me.pool[0].vector) 
+                me.pool.append(particle)
+                me.c = particle
+                me.sexp.fitness_score = self.fitness_score(me)
+                me.sexp = self._convert_to_ExpTree(me)
+
+                func = self.toFunc(me)
+                func(X_filtered, *params)
+            except Exception as e:
+                logging.basicConfig(level=logging.ERROR, filename='error.log', format='%(asctime)s - %(levelname)s - %(message)s')
+                logging.info(f"Raised error after LS optimization. Params are {params}. Error: {e}")
+                print(f"Raised error after LS optimization. Params are {params}. Error: {e}")
+
+
             # print(params)
             particle = Particle(params, 
                                 self._generate_random_velocity(me.pool[0].vector.shape[0]),
@@ -974,14 +1011,6 @@ class SymbolicRegression():
             me.sexp.fitness_score = self.fitness_score(me)
             me.sexp = self._convert_to_ExpTree(me)
 
-            # TO REMOVE
-            try:
-                func = self.toFunc(me)
-                func(2)
-            except:
-                logging.basicConfig(level=logging.ERROR, filename='error.log', format='%(asctime)s - %(levelname)s - %(message)s')
-                logging.info(f"Raised error after LS optimization. Params are {params}")
-                print(f"Raised error after LS optimization. Params are {params}")
             # print("reached")
             # except RuntimeError:
                 # params = me.pool[0]
@@ -1046,7 +1075,6 @@ class SymbolicRegression():
         
         if self.optimization_kind == "dual_annealing":
             me = me.copy_AEG()
-            func = self.toFunc(me)
             n_params = len(me.pool[0].vector)
 
             def cost_function(params):
@@ -1056,8 +1084,13 @@ class SymbolicRegression():
             
             bounds = [(self.random_const_range[0], self.random_const_range[1]) for _ in range(n_params)]
     
-
-            result = dual_annealing(cost_function, bounds)
+            try:
+                result = dual_annealing(cost_function, bounds)
+            except Exception as e:
+                logging.basicConfig(level=logging.ERROR, filename='error.log', format='%(asctime)s - %(levelname)s - %(message)s')
+                tree = [element.element() for element in me.sexp.preorder()]
+                logging.info(f"Raised error in dual annealing. \nTree:{tree}\n y:{y_test}")
+                
             params = result.x
 
             particle = Particle(params, 

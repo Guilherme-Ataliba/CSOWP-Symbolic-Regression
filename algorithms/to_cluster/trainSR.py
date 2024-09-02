@@ -152,13 +152,18 @@ class trainSR():
         return SR.predict()
 
     def runParallel(self, max_processes=8):
-        n_processes = len(self.instances)
-        if n_processes > max_processes: n_processes = max_processes
-        # print(n_processes)
-        # Every dict should be composed of {"feature_names": [options]}
-        with Pool(processes=n_processes) as pool:
-            results = pool.map(self.testAlgorithm, self.instances)
-        return results
+        
+        if max_processes == 0:
+            results = self.testAlgorithm(self.instances)
+            
+            return results
+        else:
+            n_processes = len(self.instances)
+            if n_processes > max_processes: n_processes = max_processes
+            # Every dict should be composed of {"feature_names": [options]}
+            with Pool(processes=n_processes) as pool:
+                results = pool.map(self.testAlgorithm, self.instances)
+            return results
     
     def testAlgorithm(self, instances:Dict):
 
