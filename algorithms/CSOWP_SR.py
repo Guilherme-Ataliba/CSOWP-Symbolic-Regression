@@ -224,7 +224,9 @@ class SymbolicRegression():
         if type(X) != np.ndarray:
             raise TypeError("X must be an array")
     
-        
+        if type(y) is not np.ndarray:
+            raise TypeError("y must be an array")
+    
         valid_indices = ~np.isnan(y) & np.isfinite(y)
         
         # If there's some value to remove it appears as False in the array
@@ -876,7 +878,9 @@ class SymbolicRegression():
             valid_indices = ~np.isnan(y_test) & np.isfinite(y_test)
             if False in valid_indices:
                 return me, 0
-        elif y_test is np.nan:
+        elif np.isnan(y_test) or ~np.isfinite(y_test):
+            # TO REMOVE
+            print("got nan or inf in function")
             return me, 0
 
 
@@ -941,9 +945,11 @@ class SymbolicRegression():
                 func = self.toFunc(me)
                 X = X_filtered
                 y = y_filtered
+                params = me.pool[0].vector
+                logging.info(f"Raised exception in PSO_NEW, these are the params used for fcall_string: {params}")
                 y_pred = eval(fcall_string)
                 
-                logging.info(f"Raised error after NEW_PSO optimization. \nTree:{tree}\nfcallstring: {fcall_string}\ny_pred:{y_pred}")
+                logging.info(f"Raised error after PSO_NEW optimization. \nTree:{tree}\nfcallstring: {fcall_string}\ny_pred:{y_pred}")
 
 
             particle = Particle(pos, 
@@ -977,10 +983,13 @@ class SymbolicRegression():
                 return me, 0
 
             # If the result of optimization is nan
-            if type(params) is list:
-                if np.nan in params:
+            if type(params) is list or type(params) is np.ndarray:
+                valid = ~np.isnan(params) % np.isfinite(params)
+                if False in valid:
                     return me, 0
-            elif np.nan is params:
+            elif np.isnan(params) or ~np.isfinite(params):
+                # TO REMOVE
+                print("got nan or inf in param optimization")
                 return me, 0
 
             # TO REMOVE

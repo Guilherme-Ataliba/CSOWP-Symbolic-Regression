@@ -486,4 +486,32 @@ class ExpressionTree():
     def __iter__(self):
         for p in self.positions():
             yield p.element()
+
+    # ------------------- TED ------------------------
+
+    def parentChildRepr(self) -> Dict[list, list]:
+        preorder = list(self.preorder())
+        n_nodes = len(self)
+        
+        nodes = [str(element.element()) for element in preorder]
+        adj = [[] for _ in range(n_nodes)]  
+
+        i=1
+        j=0
+
+        while True:
+            children = self.children(preorder[j])
+
+            # Stop Condition: i > n_nodes-1
+            if i > n_nodes-1:
+                return {"nodes": nodes, "adj": adj}
+
+            # If element i is children of element j, append i to adj j
+            if preorder[i] in children:
+                adj[j].append(i)
+                i += 1  
+                j = i-1 
+            # Else check the previous element 
+            else:
+                j -= 1  
         
