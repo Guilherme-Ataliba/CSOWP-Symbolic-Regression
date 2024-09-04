@@ -226,7 +226,7 @@ class trainSR():
                 raise OSError("File exists")
             else:
                 with open(file_path + "/results.csv", "w") as file:
-                    file.write("MSE_error,population,generations,training_time,i_run\n")
+                    file.write("MSE_error,population,generations,training_time,i_run,solution_string\n")
 
 
         # Defining the data ================================
@@ -284,7 +284,8 @@ class trainSR():
                     pickle.dump(output_AEG.sexp, file)
 
                 with open(file_path + f"/results.csv", "a") as file:
-                    file.write(f"{SR.fitness_score(output_AEG)},{self.population},{self.generations},{end_time - start_time},{i}\n")
+                    solution_string = output_AEG.sexp.toString_smp(SR._operators, SR._functions, SR.custom_functions_dict)
+                    file.write(f"{SR.fitness_score(output_AEG)},{self.population},{self.generations},{end_time - start_time},{i},{solution_string}\n")
                 
                 if info is not None:
                     with open(file_path + "/info.csv", "w") as file:
