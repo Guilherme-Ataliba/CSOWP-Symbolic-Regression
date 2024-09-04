@@ -183,7 +183,7 @@ class SymbolicRegression():
     
         self._weights = {
             "+": 1, "-": 1, "*": 2, "/": 2,
-            "sqrt": 3, "square": 2, "cube": 2, "quart": 2,
+            "sqrt": 3, "square": 2, "cube": 3, "quart": 3,
             "log": 4, "exp": 4, "cos": 5, "sin": 5, 
             "tan": 6, "tanh": 6, "abs": 1
         }
@@ -224,7 +224,20 @@ class SymbolicRegression():
         if type(X) != np.ndarray:
             raise TypeError("X must be an array")
     
-        self.y = y
+        if type(y) is not np.ndarray:
+            raise TypeError("y must be an array")
+    
+        valid_indices = ~np.isnan(y) & np.isfinite(y)
+        
+        # If there's some value to remove it appears as False in the array
+        if False in valid_indices: 
+            print("Input with nan or inf in y data. Removing those value.")
+            self.y = y[valid_indices]
+
+            X = X[:, valid_indices.all(axis=0)]
+        else:
+            self.y = y 
+
         self.label_name = label_name
         
         if feature_names == None:
@@ -852,23 +865,23 @@ class SymbolicRegression():
         if len(me.pool) <= 1 and check_pool == True: 
             return me.copy_AEG(), 0
 
-        # Every individual (that has constants) gets optimized
-        # if len(me.c.vector) <= 0:
-        #         return me.copy_AEG(), 0
 
+        # Dealing with nans and infs - From the input functions
+        X_filtered = self._features[self._feature_names[0]].copy()
+        y_filtered = self.y.copy()
 
-
-        # Dealing with nans and infs
-        x_data = self._features[self._feature_names[0]].copy()
-        y_data = self.y.copy()
-        valid_indices = ~np.isnan(x_data) & ~np.isnan(y_data) & np.isfinite(x_data) & np.isfinite(y_data)
-        X_filtered = x_data[valid_indices]
-        y_filtered = y_data[valid_indices]
-
-        if len(X_filtered) <= 0  or len(y_filtered) <= 0:
-            warnings.warn("X array interely made off nans or infs encountered.", RuntimeWarning)
-            print("X array interely made off nans or infs encountered.")
-            return me.copy_AEG(), 0
+        # Se um individuo gera um resultado com nans ou inf que não estavam no conjunto original vamos descarta-lo. 
+        func = self.toFunc(me)
+        y_test = func(X_filtered, *me.pool[0].vector)
+            # Sometimes the func evaluation may return a single constant. This happens when it doesnt utilize a feature in the tree. That's why the if
+        if type(y_test) is np.ndarray:
+            valid_indices = ~np.isnan(y_test) & np.isfinite(y_test)
+            if False in valid_indices:
+                return me, 0
+        elif np.isnan(y_test) or ~np.isfinite(y_test):
+            # TO REMOVE
+            print("got nan or inf in function")
+            return me, 0
 
 
 
@@ -888,6 +901,8 @@ class SymbolicRegression():
         if self.optimization_kind == "PSO_NEW":
             me = me.copy_AEG()
 
+            # TO REMOVE
+            
             # Set-up hyperparameters
             options = {'c1': 0.5, 'c2': 0.3, 'w':0.9}
             n_particles = 30
@@ -901,27 +916,40 @@ class SymbolicRegression():
 
 
             # Creating a string that later will be converted to a function call
-            fcall_string = "func(X, "
-            i=0
-            while i<n_params-1:
-                fcall_string += f"params[:, {i}], "
-                i+=1
-            fcall_string += f"params[:, {i}])"
-
+            fcall_string = "func(X"
+            for i in range(n_params):
+                fcall_string += f", params[{i}]"
+            fcall_string += ")"
             
 
-            def cost_function(params):
+            def cost_function(params, X, y):
                 func = self.toFunc(me)
-                X = np.c_[X_filtered]
-                y = np.c_[y_filtered]
                 y_pred = eval(fcall_string)
-                return np.mean((np.c_[y_filtered] - y_pred)**2, axis=0)            
+                return np.mean((y - y_pred)**2, axis=0)            
+
+            # We need to return a MSE value for each particle. That's why we need to call the cost function for each particle (param combination)
+            def cost_function_wrapper(params):
+                arr = np.array([cost_function(p, X_filtered, y_filtered) for p in params])
+                return arr
 
             # Call instance of PSO
             optimizer = pyswarms.single.GlobalBestPSO(n_particles=n_particles, dimensions=n_params, options=options)
 
             # Perform optimization
-            _, pos = optimizer.optimize(cost_function, iters=iterations, verbose=False)  
+            try:
+                _, pos = optimizer.optimize(cost_function_wrapper, iters=iterations, verbose=False)  
+            except Exception as e:
+                logging.basicConfig(level=logging.ERROR, filename='error.log', format='%(asctime)s - %(levelname)s - %(message)s')
+
+                func_string = me.sexp.toString_smp(self._operators, self._functions, self.custom_functions_dict)
+                func = self.toFunc(me)
+                X = X_filtered
+                y = y_filtered
+                params = me.pool[0].vector
+                logging.info(f"Raised exception in PSO_NEW, these are the params used for fcall_string: {params}.\n Error: {e}")
+                y_pred = eval(fcall_string)
+                
+                logging.info(f"Raised error after PSO_NEW optimization. \nfunction:{func_string}\nfcallstring: {fcall_string}\ny_pred:{y_pred}")
 
 
             particle = Particle(pos, 
@@ -931,66 +959,127 @@ class SymbolicRegression():
             me.pool = self.sort_pool_array(me)
             me.c = me.pool[0]
             me.sexp.fitness_score = self.fitness_score(me)
-            me.sexp = self._convert_to_ExpTree(me)            
+            me.sexp = self._convert_to_ExpTree(me)      
+            
+            # except ValueError as e:
+            #     logging.basicConfig(level=logging.ERROR, filename='error.log', format='%(asctime)s - %(levelname)s - %(message)s')
+            #     logging.info(f"Raised error in NEW_PSO optimization. The fcall_string was {fcall_string}.")
+
+            #     print(f"Raised error in NEW_PSO optimization. The fcall_string was {fcall_string}.")
+                
 
             return me, 0
         
         if self.optimization_kind == "LS":
             me = me.copy_AEG()
             
+
+            # If it can't reach the minimum it'll raise an error
             try:
-                # print(me.pool[0].vector)
+            # print(me.pool[0].vector)
                 params, _ = curve_fit(self.toFunc(me), 
-                                      X_filtered, y_filtered, me.pool[0].vector)
-                
-                # print(params)
+                                        X_filtered, y_filtered, me.pool[0].vector)
+            except RuntimeError:
+                print("Couldn't find best params in LS")
+                return me, 0
+
+            # If the result of optimization is nan
+            if type(params) is list or type(params) is np.ndarray:
+                valid = ~np.isnan(params) % np.isfinite(params)
+                if False in valid:
+                    return me, 0
+            elif np.isnan(params) or ~np.isfinite(params):
+                # TO REMOVE
+                print("got nan or inf in param optimization")
+                return me, 0
+
+            # TO REMOVE
+            try:
                 particle = Particle(params, 
-                                    self._generate_random_velocity(me.pool[0].vector.shape[0]),
-                                    me.pool[0].vector) 
+                                self._generate_random_velocity(me.pool[0].vector.shape[0]),
+                                me.pool[0].vector) 
                 me.pool.append(particle)
-                me.pool = self.sort_pool_array(me)
-                me.c = me.pool[0]
+                me.c = particle
                 me.sexp.fitness_score = self.fitness_score(me)
                 me.sexp = self._convert_to_ExpTree(me)
 
-                try:
-                    func = self.toFunc(me)
-                    func(X_filtered, params)
-                except Exception as e:
-                    logging.basicConfig(level=logging.ERROR, filename='error.log', format='%(asctime)s - %(levelname)s - %(message)s')
-                    logging.info(f"Raised error after LS optimization. Params are {params}. Error: {e}")
-                    print(f"Raised error after LS optimization. Params are {params}. Error: {e}")
-                # print("reached")
-            except RuntimeError:
-                params = me.pool[0]
+                func = self.toFunc(me)
+                func(X_filtered, *params)
+            except Exception as e:
+                logging.basicConfig(level=logging.ERROR, filename='error.log', format='%(asctime)s - %(levelname)s - %(message)s')
+                logging.info(f"Raised error after LS optimization. Params are {params}. Error: {e}")
+                print(f"Raised error after LS optimization. Params are {params}. Error: {e}")
+
+
+            # print(params)
+            particle = Particle(params, 
+                                self._generate_random_velocity(me.pool[0].vector.shape[0]),
+                                me.pool[0].vector) 
+            me.pool.append(particle)
+            me.pool = self.sort_pool_array(me)
+            me.c = me.pool[0]
+            me.sexp.fitness_score = self.fitness_score(me)
+            me.sexp = self._convert_to_ExpTree(me)
+
+            # print("reached")
+            # except RuntimeError:
+                # params = me.pool[0]
             
             return me, 0
     
         if self.optimization_kind == "random_LS":
-            me = me.copy_AEG()
-            # print(me.pool)
             
-            try:
-                # Vector of random numbers
-                guess = np.random.uniform(low=self.random_const_range[0], 
-                                          high=self.random_const_range[1],
-                                          size=len(me.pool[0].vector))
-                params, _ = curve_fit(self.toFunc(me),
-                                       X_filtered, y_filtered, guess)
+            # Vector of random numbers
+            guess = np.random.uniform(low=self.random_const_range[0], 
+                                        high=self.random_const_range[1],
+                                        size=len(me.pool[0].vector))
 
+            # If it can't reach the minimum it'll raise an error
+            try:
+            # print(me.pool[0].vector)
+                params, _ = curve_fit(self.toFunc(me), 
+                                        X_filtered, y_filtered, guess)
+            except RuntimeError:
+                print("Couldn't find best params in random LS")
+                return me, 0
+
+            # If the result of optimization is nan
+            if type(params) is list or type(params) is np.ndarray:
+                valid = ~np.isnan(params) % np.isfinite(params)
+                if False in valid:
+                    return me, 0
+            elif np.isnan(params) or ~np.isfinite(params):
+                # TO REMOVE
+                print("got nan or inf in param optimization (randomLS)")
+                return me, 0
+
+            # TO REMOVE
+            try:
                 particle = Particle(params, 
-                                    self._generate_random_velocity(me.pool[0].vector.shape[0]),
-                                    me.pool[0].vector)              
+                                self._generate_random_velocity(me.pool[0].vector.shape[0]),
+                                me.pool[0].vector) 
                 me.pool.append(particle)
-                me.pool = self.sort_pool_array(me)
-                me.c = me.pool[0]
+                me.c = particle
                 me.sexp.fitness_score = self.fitness_score(me)
                 me.sexp = self._convert_to_ExpTree(me)
-            
-            except RuntimeError:
-                params = me.pool[0]
-            
-            return me, 0
+
+                func = self.toFunc(me)
+                func(X_filtered, *params)
+            except Exception as e:
+                logging.basicConfig(level=logging.ERROR, filename='error.log', format='%(asctime)s - %(levelname)s - %(message)s')
+                logging.info(f"Raised error after random LS optimization. Params are {params}. Error: {e}")
+                print(f"Raised error after random LS optimization. Params are {params}. Error: {e}")
+
+
+            # print(params)
+            particle = Particle(params, 
+                                self._generate_random_velocity(me.pool[0].vector.shape[0]),
+                                me.pool[0].vector) 
+            me.pool.append(particle)
+            me.pool = self.sort_pool_array(me)
+            me.c = me.pool[0]
+            me.sexp.fitness_score = self.fitness_score(me)
+            me.sexp = self._convert_to_ExpTree(me)
 
         if self.optimization_kind == "differential_evolution":
             me = me.copy_AEG()
@@ -1024,7 +1113,6 @@ class SymbolicRegression():
         
         if self.optimization_kind == "dual_annealing":
             me = me.copy_AEG()
-            func = self.toFunc(me)
             n_params = len(me.pool[0].vector)
 
             def cost_function(params):
@@ -1034,8 +1122,13 @@ class SymbolicRegression():
             
             bounds = [(self.random_const_range[0], self.random_const_range[1]) for _ in range(n_params)]
     
-
-            result = dual_annealing(cost_function, bounds)
+            try:
+                result = dual_annealing(cost_function, bounds)
+            except Exception as e:
+                logging.basicConfig(level=logging.ERROR, filename='error.log', format='%(asctime)s - %(levelname)s - %(message)s')
+                func_string = me.sexp.toString_smp(self._operators, self._functions, self.custom_functions_dict)
+                logging.info(f"Raised error in dual annealing - Error: {e}.\nfunction:{func_string}\n y:{y_test}")
+                
             params = result.x
 
             particle = Particle(params, 

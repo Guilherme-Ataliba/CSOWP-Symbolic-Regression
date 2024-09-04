@@ -9,8 +9,7 @@ if __name__ == '__main__':
     #     "differential_evolution", "dual_annealing"
     # ]
     optimizations = [
-        "PSO_NEW", "LS", "random_LS",
-        "differential_evolution", "dual_annealing"
+        "PSO_NEW"
     ]
 
     file_names = [
@@ -100,9 +99,12 @@ if __name__ == '__main__':
         if name not in x_ranges_dict:
             print(name)
 
+    print(f"All optimizations to train are: {optimizations}")
 
     for opt in optimizations:
-        current_path = f"Outputs/articleTests/{opt}"
+        print(f"Training optimization {opt}")
+
+        current_path = f"Outputs/{opt}"
         if not os.path.isdir(current_path):
             os.mkdir(current_path)
 

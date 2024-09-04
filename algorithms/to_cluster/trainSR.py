@@ -152,18 +152,13 @@ class trainSR():
         return SR.predict()
 
     def runParallel(self, max_processes=8):
-        
-        if max_processes == 0:
-            results = self.testAlgorithm(self.instances)
-            
-            return results
-        else:
-            n_processes = len(self.instances)
-            if n_processes > max_processes: n_processes = max_processes
-            # Every dict should be composed of {"feature_names": [options]}
-            with Pool(processes=n_processes) as pool:
-                results = pool.map(self.testAlgorithm, self.instances)
-            return results
+        n_processes = len(self.instances)
+        if n_processes > max_processes: n_processes = max_processes
+        # print(n_processes)
+        # Every dict should be composed of {"feature_names": [options]}
+        with Pool(processes=n_processes) as pool:
+            results = pool.map(self.testAlgorithm, self.instances)
+        return results
     
     def testAlgorithm(self, instances:Dict):
 
@@ -231,7 +226,7 @@ class trainSR():
                 raise OSError("File exists")
             else:
                 with open(file_path + "/results.csv", "w") as file:
-                    file.write("MSE_error,population,generations,training_time,i_run\n")
+                    file.write("MSE_error,population,generations,training_time,i_run,solution_string\n")
 
 
         # Defining the data ================================
@@ -289,7 +284,8 @@ class trainSR():
                     pickle.dump(output_AEG.sexp, file)
 
                 with open(file_path + f"/results.csv", "a") as file:
-                    file.write(f"{SR.fitness_score(output_AEG)},{self.population},{self.generations},{end_time - start_time},{i}\n")
+                    solution_string = output_AEG.sexp.toString_smp(SR._operators, SR._functions, SR.custom_functions_dict)
+                    file.write(f"{SR.fitness_score(output_AEG)},{self.population},{self.generations},{end_time - start_time},{i},{solution_string}\n")
                 
                 if info is not None:
                     with open(file_path + "/info.csv", "w") as file:
