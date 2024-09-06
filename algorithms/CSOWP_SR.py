@@ -839,7 +839,6 @@ class SymbolicRegression():
                     mom.attach_subtree(p, sub_expression)
                 except:
                     print(n, len(dad), dad, d)
-                    display(dad.visualize_tree())
                 break
         
         sc = 0
@@ -884,7 +883,6 @@ class SymbolicRegression():
             return me, 0
 
 
-
         if self.optimization_kind == "NoOpt":
             # Baseline for comparison, no optimization method
             me = me.copy_AEG()
@@ -925,6 +923,11 @@ class SymbolicRegression():
             def cost_function(params, X, y):
                 func = self.toFunc(me)
                 y_pred = eval(fcall_string)
+                
+                # Dealing with functions that result nan in the evaluation proccess
+                if np.isnan(y_pred).any(): 
+                    # Equivalent to return np.inf except pyswarm can handle np.inf
+                    return 1e10
                 return np.mean((y - y_pred)**2, axis=0)            
 
             # We need to return a MSE value for each particle. That's why we need to call the cost function for each particle (param combination)
@@ -985,20 +988,23 @@ class SymbolicRegression():
             try:
             # print(me.pool[0].vector)
                 params, _ = curve_fit(self.toFunc(me), 
-                                        X_flat, y_flat, me.pool[0].vector)
+                                        X_flat, y_flat, me.pool[0].vector,
+                                        maxfev=100000)
+
             except RuntimeError as e:
                 # TO REMOVE
                 logging.basicConfig(level=logging.ERROR, filename='error.log', format='%(asctime)s - %(levelname)s - %(message)s')
                 function_string = me.sexp.toString_smp(self._operators, self._functions, self.custom_functions_dict)
-                logging.info(f"Raised error after LS optimization. Error: {e}. Function String: {function_string}\n Function:{self.toFunc(me)}\n pool:{me.pool[0].vector}\n X:{X_filtered}\ny: {y_filtered}")
+                logging.info(f"Raised error after LS optimization. Error: {e}. Function String: {function_string}\n Function:{self.toFunc(me)}\n pool:{me.pool[0].vector}")
                 print("Couldn't find best params in LS")
-
+            
                 return me, 0
 
             # If the result of optimization is nan
             if type(params) is list or type(params) is np.ndarray:
-                valid = ~np.isnan(params) % np.isfinite(params)
+                valid = ~np.isnan(params) & np.isfinite(params)
                 if False in valid:
+                    print("Param is nan")
                     return me, 0
             elif np.isnan(params) or ~np.isfinite(params):
                 # TO REMOVE
@@ -1054,14 +1060,20 @@ class SymbolicRegression():
             try:
             # print(me.pool[0].vector)
                 params, _ = curve_fit(self.toFunc(me), 
-                                        X_flat, y_flat, guess)
+                                        X_flat, y_flat, guess,
+                                        maxfev=100000)
             except RuntimeError:
+                # TO REMOVE
+                logging.basicConfig(level=logging.ERROR, filename='error.log', format='%(asctime)s - %(levelname)s - %(message)s')
+                function_string = me.sexp.toString_smp(self._operators, self._functions, self.custom_functions_dict)
+                logging.info(f"Raised error after random LS optimization. Error: {e}. Function String: {function_string}\n Function:{self.toFunc(me)}\n pool:{me.pool[0].vector}")
                 print("Couldn't find best params in random LS")
+
                 return me, 0
 
             # If the result of optimization is nan
             if type(params) is list or type(params) is np.ndarray:
-                valid = ~np.isnan(params) % np.isfinite(params)
+                valid = ~np.isnan(params) & np.isfinite(params)
                 if False in valid:
                     return me, 0
             elif np.isnan(params) or ~np.isfinite(params):
@@ -1096,6 +1108,146 @@ class SymbolicRegression():
             me.c = me.pool[0]
             me.sexp.fitness_score = self.fitness_score(me)
             me.sexp = self._convert_to_ExpTree(me)
+
+        if self.optimization_kind == "LS_trf":
+            me = me.copy_AEG()
+
+            # X and y must be flat for curve fit
+            # For the future, if working with multiple variables use np.vstack to pass multiple features instead of X[:, 1], X[:, 2], ...
+            X_flat = X_filtered.flatten()
+            y_flat = y_filtered.flatten()
+            
+
+            # If it can't reach the minimum it'll raise an error
+            try:
+            # print(me.pool[0].vector)
+                params, _ = curve_fit(self.toFunc(me), 
+                                        X_flat, y_flat, me.pool[0].vector,
+                                        maxfev=100000, method="trf")
+
+            except RuntimeError as e:
+                # TO REMOVE
+                logging.basicConfig(level=logging.ERROR, filename='error.log', format='%(asctime)s - %(levelname)s - %(message)s')
+                function_string = me.sexp.toString_smp(self._operators, self._functions, self.custom_functions_dict)
+                logging.info(f"Raised error after LS optimization. Error: {e}. Function String: {function_string}\n Function:{self.toFunc(me)}\n pool:{me.pool[0].vector}")
+                print("Couldn't find best params in LS")
+            
+                return me, 0
+
+            # If the result of optimization is nan
+            if type(params) is list or type(params) is np.ndarray:
+                valid = ~np.isnan(params) & np.isfinite(params)
+                if False in valid:
+                    print("Param is nan")
+                    return me, 0
+            elif np.isnan(params) or ~np.isfinite(params):
+                # TO REMOVE
+                print("got nan or inf in param optimization")
+                return me, 0
+
+            # TO REMOVE
+            try:
+                particle = Particle(params, 
+                                self._generate_random_velocity(me.pool[0].vector.shape[0]),
+                                me.pool[0].vector) 
+                me.pool.append(particle)
+                me.c = particle
+                me.sexp.fitness_score = self.fitness_score(me)
+                me.sexp = self._convert_to_ExpTree(me)
+
+                func = self.toFunc(me)
+                func(X_filtered, *params)
+            except Exception as e:
+                logging.basicConfig(level=logging.ERROR, filename='error.log', format='%(asctime)s - %(levelname)s - %(message)s')
+                logging.info(f"Raised error after LS optimization. Params are {params}. Error: {e}")
+                print(f"Raised error after LS optimization. Params are {params}. Error: {e}")
+
+
+            # print(params)
+            particle = Particle(params, 
+                                self._generate_random_velocity(me.pool[0].vector.shape[0]),
+                                me.pool[0].vector) 
+            me.pool.append(particle)
+            me.pool = self.sort_pool_array(me)
+            me.c = me.pool[0]
+            me.sexp.fitness_score = self.fitness_score(me)
+            me.sexp = self._convert_to_ExpTree(me)
+
+            # print("reached")
+            # except RuntimeError:
+                # params = me.pool[0]
+            
+            return me, 0
+        
+        if self.optimization_kind == "LS_dogbox":
+            me = me.copy_AEG()
+
+            # X and y must be flat for curve fit
+            # For the future, if working with multiple variables use np.vstack to pass multiple features instead of X[:, 1], X[:, 2], ...
+            X_flat = X_filtered.flatten()
+            y_flat = y_filtered.flatten()
+            
+
+            # If it can't reach the minimum it'll raise an error
+            try:
+            # print(me.pool[0].vector)
+                params, _ = curve_fit(self.toFunc(me), 
+                                        X_flat, y_flat, me.pool[0].vector,
+                                        maxfev=100000, method="dogbox")
+
+            except RuntimeError as e:
+                # TO REMOVE
+                logging.basicConfig(level=logging.ERROR, filename='error.log', format='%(asctime)s - %(levelname)s - %(message)s')
+                function_string = me.sexp.toString_smp(self._operators, self._functions, self.custom_functions_dict)
+                logging.info(f"Raised error after LS optimization. Error: {e}. Function String: {function_string}\n Function:{self.toFunc(me)}\n pool:{me.pool[0].vector}")
+                print("Couldn't find best params in LS")
+            
+                return me, 0
+
+            # If the result of optimization is nan
+            if type(params) is list or type(params) is np.ndarray:
+                valid = ~np.isnan(params) & np.isfinite(params)
+                if False in valid:
+                    print("Param is nan")
+                    return me, 0
+            elif np.isnan(params) or ~np.isfinite(params):
+                # TO REMOVE
+                print("got nan or inf in param optimization")
+                return me, 0
+
+            # TO REMOVE
+            try:
+                particle = Particle(params, 
+                                self._generate_random_velocity(me.pool[0].vector.shape[0]),
+                                me.pool[0].vector) 
+                me.pool.append(particle)
+                me.c = particle
+                me.sexp.fitness_score = self.fitness_score(me)
+                me.sexp = self._convert_to_ExpTree(me)
+
+                func = self.toFunc(me)
+                func(X_filtered, *params)
+            except Exception as e:
+                logging.basicConfig(level=logging.ERROR, filename='error.log', format='%(asctime)s - %(levelname)s - %(message)s')
+                logging.info(f"Raised error after LS optimization. Params are {params}. Error: {e}")
+                print(f"Raised error after LS optimization. Params are {params}. Error: {e}")
+
+
+            # print(params)
+            particle = Particle(params, 
+                                self._generate_random_velocity(me.pool[0].vector.shape[0]),
+                                me.pool[0].vector) 
+            me.pool.append(particle)
+            me.pool = self.sort_pool_array(me)
+            me.c = me.pool[0]
+            me.sexp.fitness_score = self.fitness_score(me)
+            me.sexp = self._convert_to_ExpTree(me)
+
+            # print("reached")
+            # except RuntimeError:
+                # params = me.pool[0]
+            
+            return me, 0
 
         if self.optimization_kind == "differential_evolution":
             me = me.copy_AEG()
