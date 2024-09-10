@@ -5,7 +5,7 @@ import pandas as pd
 import numpy as np
 from random import randint, choice, uniform, seed
 from ExpressionTree import *
-from scipy.optimize import curve_fit, differential_evolution, dual_annealing
+from scipy.optimize import curve_fit, differential_evolution, dual_annealing, minimize
 from copy import deepcopy
 import pickle
 import pyswarms
@@ -1062,7 +1062,7 @@ class SymbolicRegression():
                 params, _ = curve_fit(self.toFunc(me), 
                                         X_flat, y_flat, guess,
                                         maxfev=100000)
-            except RuntimeError:
+            except RuntimeError as e:
                 # TO REMOVE
                 logging.basicConfig(level=logging.ERROR, filename='error.log', format='%(asctime)s - %(levelname)s - %(message)s')
                 function_string = me.sexp.toString_smp(self._operators, self._functions, self.custom_functions_dict)
@@ -1109,6 +1109,8 @@ class SymbolicRegression():
             me.sexp.fitness_score = self.fitness_score(me)
             me.sexp = self._convert_to_ExpTree(me)
 
+            return me, 0
+
         if self.optimization_kind == "LS_trf":
             me = me.copy_AEG()
 
@@ -1133,6 +1135,14 @@ class SymbolicRegression():
                 print("Couldn't find best params in LS")
             
                 return me, 0
+
+            except ValueError as e:
+                # TO REMOVE
+                logging.basicConfig(level=logging.ERROR, filename='error.log', format='%(asctime)s - %(levelname)s - %(message)s')
+                function_string = me.sexp.toString_smp(self._operators, self._functions, self.custom_functions_dict)
+                logging.info(f"Raised error after LS trf optimization. Error: {e}. Function String: {function_string}\n Function:{self.toFunc(me)}\n pool:{me.pool[0].vector}\n X:{X_flat}\n y:{y_flat}\ny_test:{y_test}")
+                print("Value error in LS trf")
+
 
             # If the result of optimization is nan
             if type(params) is list or type(params) is np.ndarray:
@@ -1296,6 +1306,229 @@ class SymbolicRegression():
                 logging.basicConfig(level=logging.ERROR, filename='error.log', format='%(asctime)s - %(levelname)s - %(message)s')
                 func_string = me.sexp.toString_smp(self._operators, self._functions, self.custom_functions_dict)
                 logging.info(f"Raised error in dual annealing - Error: {e}.\nfunction:{func_string}\n y:{y_test}")
+
+                return me, 0
+                
+            params = result.x
+
+            particle = Particle(params, 
+                                    self._generate_random_velocity(me.pool[0].vector.shape[0]),
+                                    me.pool[0].vector)  
+            me.pool.append(particle)
+            me.pool = self.sort_pool_array(me)
+            me.c = me.pool[0]
+            me.sexp.fitness_score = self.fitness_score(me)
+            me.sexp = self._convert_to_ExpTree(me)            
+
+            return me, 0
+
+        if self.optimization_kind == "Nelder-Mead":
+            me = me.copy_AEG()
+            n_params = len(me.pool[0].vector)
+
+            def cost_function(params):
+                X = X_filtered
+                y_pred = func(X, *params)
+                return np.mean((self.y - y_pred)**2)
+    
+            try:
+                result = minimize(cost_function, x0=me.pool[0].vector, method="Nelder-Mead")
+            except Exception as e:
+                logging.basicConfig(level=logging.ERROR, filename='error.log', format='%(asctime)s - %(levelname)s - %(message)s')
+                func_string = me.sexp.toString_smp(self._operators, self._functions, self.custom_functions_dict)
+                logging.info(f"Raised error in Nelder Mead - Error: {e}.\nfunction:{func_string}")
+
+                return me, 0
+                
+            params = result.x
+
+            particle = Particle(params, 
+                                    self._generate_random_velocity(me.pool[0].vector.shape[0]),
+                                    me.pool[0].vector)  
+            me.pool.append(particle)
+            me.pool = self.sort_pool_array(me)
+            me.c = me.pool[0]
+            me.sexp.fitness_score = self.fitness_score(me)
+            me.sexp = self._convert_to_ExpTree(me)            
+
+            return me, 0
+        
+        if self.optimization_kind == "Nelder-Mead_random":
+            me = me.copy_AEG()
+            n_params = len(me.pool[0].vector)
+
+            def cost_function(params):
+                X = X_filtered
+                y_pred = func(X, *params)
+                return np.mean((self.y - y_pred)**2)
+    
+            # Vector of random numbers
+            guess = np.random.uniform(low=self.random_const_range[0], 
+                                        high=self.random_const_range[1],
+                                        size=len(me.pool[0].vector))
+
+            try:
+                result = minimize(cost_function, x0=guess, method="Nelder-Mead")
+            except Exception as e:
+                logging.basicConfig(level=logging.ERROR, filename='error.log', format='%(asctime)s - %(levelname)s - %(message)s')
+                func_string = me.sexp.toString_smp(self._operators, self._functions, self.custom_functions_dict)
+                logging.info(f"Raised error in Nelder Mead - Error: {e}.\nfunction:{func_string}")
+
+                return me, 0
+                
+            params = result.x
+
+            particle = Particle(params, 
+                                    self._generate_random_velocity(me.pool[0].vector.shape[0]),
+                                    me.pool[0].vector)  
+            me.pool.append(particle)
+            me.pool = self.sort_pool_array(me)
+            me.c = me.pool[0]
+            me.sexp.fitness_score = self.fitness_score(me)
+            me.sexp = self._convert_to_ExpTree(me)            
+
+            return me, 0
+
+        if self.optimization_kind == "BFGS":
+            me = me.copy_AEG()
+            n_params = len(me.pool[0].vector)
+
+            def cost_function(params):
+                X = X_filtered
+                y_pred = func(X, *params)
+                return np.mean((self.y - y_pred)**2)
+    
+            try:
+                result = minimize(cost_function, x0=me.pool[0].vector, method="BFGS")
+            except Exception as e:
+                logging.basicConfig(level=logging.ERROR, filename='error.log', format='%(asctime)s - %(levelname)s - %(message)s')
+                func_string = me.sexp.toString_smp(self._operators, self._functions, self.custom_functions_dict)
+                logging.info(f"Raised error in Nelder Mead - Error: {e}.\nfunction:{func_string}")
+
+                return me, 0
+
+            params = result.x
+
+            # If the result of optimization is nan
+            if type(params) is list or type(params) is np.ndarray:
+                valid = ~np.isnan(params) & np.isfinite(params)
+                if False in valid:
+                    print("Param is nan")
+                    return me, 0
+            elif np.isnan(params) or ~np.isfinite(params):
+                # TO REMOVE
+                print("got nan or inf in param optimization")
+                return me, 0
+
+            particle = Particle(params, 
+                                    self._generate_random_velocity(me.pool[0].vector.shape[0]),
+                                    me.pool[0].vector)  
+            me.pool.append(particle)
+            me.pool = self.sort_pool_array(me)
+            me.c = me.pool[0]
+            me.sexp.fitness_score = self.fitness_score(me)
+            me.sexp = self._convert_to_ExpTree(me)            
+
+            return me, 0
+        
+        if self.optimization_kind == "BFGS_random":
+            me = me.copy_AEG()
+            n_params = len(me.pool[0].vector)
+
+            def cost_function(params):
+                X = X_filtered
+                y_pred = func(X, *params)
+                return np.mean((self.y - y_pred)**2)
+    
+            # Vector of random numbers
+            guess = np.random.uniform(low=self.random_const_range[0], 
+                                        high=self.random_const_range[1],
+                                        size=len(me.pool[0].vector))
+
+            try:
+                result = minimize(cost_function, x0=guess, method="BFGS")
+            except Exception as e:
+                logging.basicConfig(level=logging.ERROR, filename='error.log', format='%(asctime)s - %(levelname)s - %(message)s')
+                func_string = me.sexp.toString_smp(self._operators, self._functions, self.custom_functions_dict)
+                logging.info(f"Raised error in Nelder Mead - Error: {e}.\nfunction:{func_string}")
+
+                return me, 0
+                
+            params = result.x
+
+            # If the result of optimization is nan
+            if type(params) is list or type(params) is np.ndarray:
+                valid = ~np.isnan(params) & np.isfinite(params)
+                if False in valid:
+                    print("Param is nan")
+                    return me, 0
+            elif np.isnan(params) or ~np.isfinite(params):
+                # TO REMOVE
+                print("got nan or inf in param optimization")
+                return me, 0
+
+            particle = Particle(params, 
+                                    self._generate_random_velocity(me.pool[0].vector.shape[0]),
+                                    me.pool[0].vector)  
+            me.pool.append(particle)
+            me.pool = self.sort_pool_array(me)
+            me.c = me.pool[0]
+            me.sexp.fitness_score = self.fitness_score(me)
+            me.sexp = self._convert_to_ExpTree(me)            
+
+            return me, 0
+        
+        if self.optimization_kind == "CG":
+            me = me.copy_AEG()
+            n_params = len(me.pool[0].vector)
+
+            def cost_function(params):
+                X = X_filtered
+                y_pred = func(X, *params)
+                return np.mean((self.y - y_pred)**2)
+    
+            try:
+                result = minimize(cost_function, x0=me.pool[0].vector, method="CG")
+            except Exception as e:
+                logging.basicConfig(level=logging.ERROR, filename='error.log', format='%(asctime)s - %(levelname)s - %(message)s')
+                func_string = me.sexp.toString_smp(self._operators, self._functions, self.custom_functions_dict)
+                logging.info(f"Raised error in Nelder Mead - Error: {e}.\nfunction:{func_string}")
+
+                return me, 0
+                
+            params = result.x
+
+            particle = Particle(params, 
+                                    self._generate_random_velocity(me.pool[0].vector.shape[0]),
+                                    me.pool[0].vector)  
+            me.pool.append(particle)
+            me.pool = self.sort_pool_array(me)
+            me.c = me.pool[0]
+            me.sexp.fitness_score = self.fitness_score(me)
+            me.sexp = self._convert_to_ExpTree(me)            
+
+            return me, 0
+        
+        if self.optimization_kind == "CG_random":
+            me = me.copy_AEG()
+            n_params = len(me.pool[0].vector)
+
+            def cost_function(params):
+                X = X_filtered
+                y_pred = func(X, *params)
+                return np.mean((self.y - y_pred)**2)
+    
+            # Vector of random numbers
+            guess = np.random.uniform(low=self.random_const_range[0], 
+                                        high=self.random_const_range[1],
+                                        size=len(me.pool[0].vector))
+
+            try:
+                result = minimize(cost_function, x0=guess, method="CG")
+            except Exception as e:
+                logging.basicConfig(level=logging.ERROR, filename='error.log', format='%(asctime)s - %(levelname)s - %(message)s')
+                func_string = me.sexp.toString_smp(self._operators, self._functions, self.custom_functions_dict)
+                logging.info(f"Raised error in Nelder Mead - Error: {e}.\nfunction:{func_string}")
 
                 return me, 0
                 
