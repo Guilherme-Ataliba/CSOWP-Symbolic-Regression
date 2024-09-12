@@ -1,0 +1,4 @@
+MSE_error,population,generations,training_time,i_run,solution_string
+286.1512513765064,2000,6,3414.348355293274,0,(exp(exp((exp(-x)*exp(x))))/exp(-exp(exp(-(exp(-x)*exp(exp(-exp(-x))))))))
+261.89971941272347,2000,6,3505.453301668167,1,exp(((0.9296238097954608/0.175)-((0.097+exp(-x))/x)))
+390.7559440948192,2000,6,3445.3755927085876,2,exp(exp((exp(-0.41)+exp(-exp(-x)))))

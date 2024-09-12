@@ -395,7 +395,16 @@ class SymbolicRegression():
 
         func = self.toFunc(tree)
         features = np.array(list(self._features.values()))
-        return func(*features)
+        
+        try: 
+            output = func(*features)
+            return output
+        except OverflowError as e:
+            logging.basicConfig(level=logging.ERROR, filename='error.log', format='%(asctime)s - %(levelname)s - %(message)s')
+            logging.info(f"Overflow error in evaluate_tree: {e}.")
+
+            return np.inf
+        
 
     @singledispatchmethod
     def fitness_score(self, individual: Any, custom_func = None):
@@ -1403,11 +1412,22 @@ class SymbolicRegression():
             except Exception as e:
                 logging.basicConfig(level=logging.ERROR, filename='error.log', format='%(asctime)s - %(levelname)s - %(message)s')
                 func_string = me.sexp.toString_smp(self._operators, self._functions, self.custom_functions_dict)
-                logging.info(f"Raised error in Nelder Mead - Error: {e}.\nfunction:{func_string}")
+                logging.info(f"Raised error in BFGS - Error: {e}.\nfunction:{func_string}")
 
                 return me, 0
 
             params = result.x
+
+            try:
+                func = self.toFunc(me)
+                func(X_filtered, *params)
+            except Exception as e:
+                logging.basicConfig(level=logging.ERROR, filename='error.log', format='%(asctime)s - %(levelname)s - %(message)s')
+                func_string = me.sexp.toString_smp(self._operators, self._functions, self.custom_functions_dict)
+                logging.info(f"Raised error in BFGS - Error: {e}.\nfunction:{func_string}")
+                print(f"Raised error in BFGS - Error: {e}.\nfunction:{func_string}")
+
+                return me, 0
 
             # If the result of optimization is nan
             if type(params) is list or type(params) is np.ndarray:
@@ -1455,6 +1475,17 @@ class SymbolicRegression():
                 return me, 0
                 
             params = result.x
+
+            try:
+                func = self.toFunc(me)
+                func(X_filtered, *params)
+            except Exception as e:
+                logging.basicConfig(level=logging.ERROR, filename='error.log', format='%(asctime)s - %(levelname)s - %(message)s')
+                func_string = me.sexp.toString_smp(self._operators, self._functions, self.custom_functions_dict)
+                logging.info(f"Raised error in BFGS - Error: {e}.\nfunction:{func_string}")
+                print(f"Raised error in BFGS - Error: {e}.\nfunction:{func_string}")
+
+                return me, 0
 
             # If the result of optimization is nan
             if type(params) is list or type(params) is np.ndarray:

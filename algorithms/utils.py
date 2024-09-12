@@ -55,10 +55,13 @@ def exprToTree(expr, single_name=False):
 
 # Data Manip =====================================================
 def create_data(opt_path):
+    print(opt_path)
     search = re.search(".+(/.+)$", opt_path)
     optimization = search.group(1)[1:]
 
     dataFrames = []
+
+    symbols = {"x": smp.symbols("x", positive=True, real=True)}
     
     for problem in os.listdir(opt_path):
         results_path = os.path.join(opt_path, problem, "results.csv")
@@ -81,15 +84,19 @@ def create_data(opt_path):
             index = int(search.group(1)[1:])
             tree_path = os.path.join(trees_path, tree)
 
-            
-            smp_tree = exprToTree(solution_string[index], single_name=True)
+            expr = smp.parse_expr(solution_string[index], local_dict=symbols)
+            expr = expr.simplify(local_dict=symbols)
+            expr = smp.nsimplify(expr, tolerance=1e-6).evalf()
+            # expr = smp.simplify(expr)
+
+            smp_tree = exprToTree(expr, single_name=True)
             tree_dict = smp_tree.parentChildRepr()
             tree_dict["optimization"] = optimization
             tree_dict["problem"] = problem
             tree_dict["index"] = index
             tree_dict["MSE"] = MSE[index]
             tree_dict["training_time(s)"] = training_time[index]
-            tree_dict["solution_string"] = solution_string[index]
+            tree_dict["solution_string"] = expr
             tree_dict["expression"] = expression
 
             df = pd.DataFrame([tree_dict])
