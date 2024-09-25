@@ -4,12 +4,8 @@ from ExpressionTree import *
 import os
 
 if __name__ == '__main__':
-    # optimizations = [
-    #     "NoOpt", "PSO", "PSO_NEW", "LS", "random_LS",
-    #     "differential_evolution", "dual_annealing"
-    # ]
     optimizations = [
-        "PSO_NEW"
+        XYZ
     ]
 
     file_names = [

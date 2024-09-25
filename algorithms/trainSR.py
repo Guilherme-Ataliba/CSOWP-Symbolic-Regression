@@ -211,15 +211,14 @@ class trainSR():
                 raise RuntimeError("You must inform x_range either here or on class init")
             else:
                 n_points = self.n_points
-            
-        if info is not None and type(info) != dict:
-            raise TypeError("Info must be a dictionary.")
+
 
         # Initial Definitions ==============================
         if self.dir_path is not None:
-            file_path = os.path.join(self.dir_path, file_name)
+            # file_path = os.path.join(self.dir_path, file_name)
+            file_path = self.dir_path + f"/{file_name}"
             if not os.path.isdir(file_path): 
-                os.mkdir(file_path,)
+                os.makedirs(file_path,)
                 os.mkdir(file_path + "/data")
                 os.mkdir(file_path + "/trees")
             if os.path.isfile(file_path + "/results.csv") and not self.overwrite:
@@ -227,6 +226,14 @@ class trainSR():
             else:
                 with open(file_path + "/results.csv", "w") as file:
                     file.write("MSE_error,population,generations,training_time,i_run,solution_string\n")
+
+        if info is not None:
+            if type(info) != dict:
+                raise TypeError("Info must be a dictionary.")
+            else:
+                file_path = self.dir_path + f"/{file_name}"
+                with open(file_path + "/info.csv", "a") as file:
+                    file.write(f"SEED: {self.SEED}\n")
 
 
         # Defining the data ================================
@@ -288,7 +295,7 @@ class trainSR():
                     file.write(f"{SR.fitness_score(output_AEG)},{self.population},{self.generations},{end_time - start_time},{i},{solution_string}\n")
                 
                 if info is not None:
-                    with open(file_path + "/info.csv", "w") as file:
+                    with open(file_path + "/info.csv", "a") as file:
                         for item in info.items():
                             file.write(f"{item[0]}, {item[1]}\n")
 

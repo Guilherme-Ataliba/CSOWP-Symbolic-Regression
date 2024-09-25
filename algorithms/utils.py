@@ -3,6 +3,12 @@ from ExpressionTree import *
 import sympy as smp
 import re
 import os
+import logging
+
+import sys
+sys.set_int_max_str_digits(100000)
+
+import signal
 
 # Expressions ===================================================
 op_map = {smp.Mul: "*", smp.Add: "+", smp.Pow: "**"}
@@ -54,8 +60,29 @@ def exprToTree(expr, single_name=False):
 
 
 # Data Manip =====================================================
+
+def recursive_simplify_evalf(expr, precision=15):
+    # Base case: if the expr has no args, it is an atom (number or symbol)
+    if not expr.args:
+        return expr.evalf(precision).simplify()
+
+    # Recursively process all arguments
+    simplified_args = [recursive_simplify_evalf(arg, precision) for arg in expr.args]
+    
+    # Reconstruct the expression with simplified arguments
+    simplified_expr = expr.func(*simplified_args)
+
+    # Apply simplify and evalf on the resulting expression
+    return simplified_expr.evalf(precision).simplify()
+
+def handler(signum, frame):
+    raise TimeoutError("Execution took longer than 10 seconds!")
+
 def create_data(opt_path):
-    print(opt_path)
+    # print(opt_path)
+    logging.basicConfig(level=logging.ERROR, filename='info.log', format='%(asctime)s - %(levelname)s - %(message)s')
+    logging.info(opt_path)
+
     search = re.search(".+(/.+)$", opt_path)
     optimization = search.group(1)[1:]
 
@@ -76,7 +103,7 @@ def create_data(opt_path):
         solution_string = results["solution_string"]
 
         # Info =======
-        info = pd.read_csv(info_path)
+        info = pd.read_csv(info_path, skiprows=1)
         expression = info.columns[1]
 
         for tree in os.listdir(trees_path):
@@ -84,12 +111,41 @@ def create_data(opt_path):
             index = int(search.group(1)[1:])
             tree_path = os.path.join(trees_path, tree)
 
-            expr = smp.parse_expr(solution_string[index], local_dict=symbols)
-            expr = expr.simplify(local_dict=symbols)
-            expr = smp.nsimplify(expr, tolerance=1e-6).evalf()
-            # expr = smp.simplify(expr)
+            # Simplifying big numbers
+            expr_string = re.sub(r'(\d|\.){15,}(e(-|\+)\d{1,2}|)', lambda x: "{:.6e}".format(float(x.group())), solution_string[index])
 
-            smp_tree = exprToTree(expr, single_name=True)
+            try:
+                expr = smp.parse_expr(expr_string, local_dict=symbols)
+            except MemoryError:
+                print("memory error occured")
+                expr = smp.parse_expr("0")
+            except OverflowError: # Since all constants will be converted symbolic versions the actual value doesnt matter
+                expr_string = re.sub(r'(\d|\.){1,}(e(-|\+)\d{1,2}|)', "1.5", expr_string)
+                expr = smp.parse_expr(expr_string, local_dict=symbols)
+                
+            
+            signal.signal(signal.SIGALRM, handler)
+            try:
+                signal.alarm(30)
+                expr = expr.simplify(local_dict=symbols)
+                expr = smp.nsimplify(expr, tolerance=1e-6).evalf(20)
+                signal.alarm(0)
+            except:
+                pass
+            
+            try:
+                signal.alarm(30)
+                expr = recursive_simplify_evalf(expr)
+                signal.alarm(0)
+            except:
+                pass
+
+
+            # expr = smp.simplify(expr)
+            try:
+                smp_tree = exprToTree(expr, single_name=True)
+            except:
+                continue
             tree_dict = smp_tree.parentChildRepr()
             tree_dict["optimization"] = optimization
             tree_dict["problem"] = problem
