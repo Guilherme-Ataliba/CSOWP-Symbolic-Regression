@@ -128,7 +128,7 @@ def create_data(opt_path):
             try:
                 signal.alarm(30)
                 expr = expr.simplify(local_dict=symbols)
-                expr = smp.nsimplify(expr, tolerance=1e-6).evalf(20)
+                expr = smp.nsimplify(expr, tolerance=1e-5).evalf(20)
                 signal.alarm(0)
             except:
                 pass

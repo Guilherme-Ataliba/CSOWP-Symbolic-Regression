@@ -92,7 +92,7 @@ def handler(signum, frame):
 signal.signal(signal.SIGALRM, handler)
 
 def try_simplify(solution):
-    return solution.simplify()
+    return smp.nsimplify(solution, tolerance=1e-5).evalf(20).simplify()
 
 dataFrames = []
 
