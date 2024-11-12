@@ -1,0 +1,4 @@
+MSE_error,population,generations,training_time,i_run,solution_string
+0.00022089046696742708,2000,6,1512.147295475006,0,sqrt((sqrt(sqrt(sqrt((sqrt(0.374)/0.383))))+sqrt(sqrt(x))))
+0.0002208740873838475,2000,6,1476.8438940048218,1,sqrt((sqrt(sqrt(x))+sqrt(sqrt((sqrt(0.967)+0.281)))))
+0.00029814195930297097,2000,6,1547.255445241928,2,sqrt((sqrt((sqrt(0.609)+(0.957+sqrt(x))))/0.781))

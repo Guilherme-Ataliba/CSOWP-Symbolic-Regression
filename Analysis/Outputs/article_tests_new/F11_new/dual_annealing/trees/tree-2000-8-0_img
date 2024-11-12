@@ -1,0 +1,19 @@
+digraph {
+	0 [label="+"]
+	1 [label=6.2206696764064935]
+	0 -> 1
+	2 [label="*"]
+	0 -> 2
+	3 [label=square]
+	2 -> 3
+	8 [label=13.561602137582174]
+	2 -> 8
+	4 [label=square]
+	3 -> 4
+	5 [label=square]
+	4 -> 5
+	6 [label=cos]
+	5 -> 6
+	7 [label=x]
+	6 -> 7
+}

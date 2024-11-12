@@ -1,0 +1,25 @@
+digraph {
+	0 [label="*"]
+	1 [label=cos]
+	0 -> 1
+	4 [label="/"]
+	0 -> 4
+	2 [label=cos]
+	1 -> 2
+	3 [label=x]
+	2 -> 3
+	5 [label="exp-"]
+	4 -> 5
+	11 [label=0.00010607360073583652]
+	4 -> 11
+	6 [label="*"]
+	5 -> 6
+	7 [label=22.380384371669997]
+	6 -> 7
+	8 [label="exp-"]
+	6 -> 8
+	9 [label=cos]
+	8 -> 9
+	10 [label=x]
+	9 -> 10
+}

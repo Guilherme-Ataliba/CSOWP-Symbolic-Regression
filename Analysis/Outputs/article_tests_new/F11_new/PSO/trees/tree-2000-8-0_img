@@ -1,0 +1,17 @@
+digraph {
+	0 [label="-"]
+	1 [label=square]
+	0 -> 1
+	7 [label=9.841]
+	0 -> 7
+	2 [label="-"]
+	1 -> 2
+	3 [label=square]
+	2 -> 3
+	6 [label=4.971]
+	2 -> 6
+	4 [label=sin]
+	3 -> 4
+	5 [label=x]
+	4 -> 5
+}

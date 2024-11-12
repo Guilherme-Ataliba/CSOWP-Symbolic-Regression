@@ -1,0 +1,41 @@
+digraph {
+	0 [label="/"]
+	1 [label="-"]
+	0 -> 1
+	17 [label="exp-"]
+	0 -> 17
+	2 [label="*"]
+	1 -> 2
+	5 [label="+"]
+	1 -> 5
+	3 [label=x]
+	2 -> 3
+	4 [label=12.294]
+	2 -> 4
+	6 [label=sin]
+	5 -> 6
+	10 [label="-"]
+	5 -> 10
+	7 [label=sin]
+	6 -> 7
+	8 [label=sin]
+	7 -> 8
+	9 [label=x]
+	8 -> 9
+	11 [label=x]
+	10 -> 11
+	12 [label=square]
+	10 -> 12
+	13 [label=cos]
+	12 -> 13
+	14 [label="-"]
+	13 -> 14
+	15 [label=x]
+	14 -> 15
+	16 [label=x]
+	14 -> 16
+	18 [label=cos]
+	17 -> 18
+	19 [label=13.205]
+	18 -> 19
+}

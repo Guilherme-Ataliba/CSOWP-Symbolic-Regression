@@ -3,8 +3,15 @@ from typing import Any, List
 
 import pandas as pd
 import numpy as np
-from random import randint, choice, uniform
+from random import randint, choice, uniform, seed
 from ExpressionTree import *
+from scipy.optimize import curve_fit, differential_evolution, dual_annealing, minimize
+from copy import deepcopy
+import pickle
+import pyswarms
+import warnings
+import logging
+import traceback
 
 class Particle():
     "v: velocity vector"
@@ -54,6 +61,40 @@ class AEG():
             new_AEG.pool.append(particle.copy_particle())
         
         return new_AEG
+    
+    def toFunc(self, operators, functions, features, custom_functions_dict={}):
+        expr_string = self.aexp.toString(operators, functions, custom_functions_dict=custom_functions_dict)
+        expr_string = expr_string.replace("[", "").replace("]", "")
+
+        if len(self.pool) > 0:
+            n_params = len(self.pool[0].vector)
+            
+            params_dict = {}
+            for i in features:
+                feature = smp.symbols(f"{i}")
+                params_dict[f"{i}"] = feature
+            
+            for i in range(n_params):
+                feature = smp.symbols(f"c{i}")
+                params_dict[f"c{i}"] = feature
+
+            # print(expr_string)
+            # print(params_dict)
+            smp_expr = smp.sympify(expr_string, locals=params_dict)
+        else:
+            smp_expr = smp.sympify(expr_string)
+
+        
+
+        symbols_list = params_dict.keys()
+
+        symbols_string = ""
+        for i in symbols_list:
+            symbols_string += f"{i}, "
+
+        symbols = smp.symbols(symbols_string)
+        
+        return smp.lambdify(symbols, smp_expr)
 
 
 class SymbolicRegression():
@@ -72,10 +113,10 @@ class SymbolicRegression():
     __slots__ = ("X", "y", "G", "_feature_names", "label_name", "max_population_size", "max_expression_size",
                 "_operators", "_functions", "_options", "_operators_func", "_functions_func", "_features", 
                 "max_island_count", "max_island_size", "_weights", "max_pool_size", "random_const_range",
-                "_mult_tree", "_add_tree", "_linear_tree", "island_interval")
-    def __init__(self, G, feature_names=None, label_name="y", max_population_size=5000, max_expression_size = 5, max_island_count=500,
-                max_pool_size = 15, random_const_range=(0,1), operators=None, functions=None, weights=None,
-                island_interval=None):
+                "_mult_tree", "_add_tree", "_linear_tree", "island_interval", "optimization_kind", "custom_functions_dict")
+    def __init__(self, G, feature_names=None, label_name="y", max_population_size=5000, max_expression_size = 5, max_island_count=None, 
+                max_island_size=None, max_pool_size = 15, random_const_range=(0,1), operators=None, functions=None, weights=None,
+                island_interval=None, optimization_kind="PSO", custom_functions_dict=None):
         """
             - feature_names: A list containing the names of every feature in X
             - island_interval: (islands bellow the current one, islands above the current one)
@@ -87,13 +128,26 @@ class SymbolicRegression():
         self.max_population_size = max_population_size
         self.max_pool_size = max_pool_size
         self.max_expression_size = max_expression_size
-        self.max_island_count = max_island_count
-        self.max_island_size = int(max_population_size / max_island_count)
+        self.optimization_kind = optimization_kind
+        
+
+        if max_island_count is None:
+            self.max_island_count = int(max_population_size/10)
+        else:
+            self.max_island_count = max_island_count
+
+        if max_island_size is None:
+            self.max_island_size = int(max_population_size / self.max_island_count)
+        else:
+            self.max_island_size = max_island_size
         
         self.random_const_range = random_const_range
 
         if island_interval == None:
-            island_interval = (1,0)
+            self.island_interval = (1,0)
+        else:
+            self.island_interval = island_interval
+        
         
         """ I've chosen to let _operatos and _functions here to reduce call 
             of list() and .keys() from _operators_func and _functions_func 
@@ -110,12 +164,12 @@ class SymbolicRegression():
 
         # Functions
         if functions is None:
-            self._functions = ["abs", "square", "cube", "quart", "cos", "sin",
-                        "tan", "tanh", "exp", "sqrt", "log", "exp"] # "max", "min"
+            self._functions = ["abs", "square", "cos", "sin",
+                        "tan", "tanh", "exp", "sqrt", "log"] # "max", "min"
             self._functions_func = {"abs": lambda a: np.abs(a), "exp": lambda a: np.exp(a), "square": lambda a: a**2,
-                            "cube": lambda a: a**3, "quart": lambda a: a**4, "cos": lambda a: np.cos(a),
+                            "cos": lambda a: np.cos(a),
                             "sin": lambda a: np.sin(a), "tan": lambda a: np.tan(a), "tanh": lambda a: np.tanh(a),
-                            "sqrt": lambda a: np.sqrt(a), "log": lambda a: np.log(a), "exp": lambda a: np.exp(a)}
+                            "sqrt": lambda a: np.sqrt(a), "log": lambda a: np.log(a)}
         else:
             self._functions_func = functions
             self._functions = list(functions.keys())
@@ -129,7 +183,7 @@ class SymbolicRegression():
     
         self._weights = {
             "+": 1, "-": 1, "*": 2, "/": 2,
-            "sqrt": 3, "square": 2, "cube": 2, "quart": 2,
+            "sqrt": 3, "square": 2, "cube": 3, "quart": 3,
             "log": 4, "exp": 4, "cos": 5, "sin": 5, 
             "tan": 6, "tanh": 6, "abs": 1
         }
@@ -137,31 +191,53 @@ class SymbolicRegression():
             for i, j in weights.items():
                 self._weights[i] = j
 
+        # Function Dictionary
+        self.custom_functions_dict = {"sin": ["np.sin(",")"], "cos": ["np.cos(",")"],
+                                      "abs": ["np.abs(", ")"], "square": ["(", ")**2"],
+                                      "tan": ["np.tan(", ")"], "tanh": ["np.tanh(", ")"],
+                                      "exp": ["np.exp(", ")"], "sqrt": ["np.sqrt(", ")"],
+                                      "log": ["np.log(", ")"]
+                                      }
+        if custom_functions_dict is not None:
+            self.custom_functions_dict.update(custom_functions_dict)
 
         # Linear Transform Trees
         self._mult_tree = ExpressionTree()
-        p = self._mult_tree.add_root("*")
-        self._mult_tree.add_left(p, "a")
-        self._mult_tree.add_right(p, "x")
+        p = self._mult_tree.add_root("*", e_type="operator")
+        self._mult_tree.add_left(p, "a", e_type="constant")
+        self._mult_tree.add_right(p, "x", e_type="feature")
 
         self._add_tree = ExpressionTree()
-        p = self._add_tree.add_root("+")
-        self._add_tree.add_left(p, "a")
-        self._add_tree.add_right(p, "x")
+        p = self._add_tree.add_root("+", e_type="operator")
+        self._add_tree.add_left(p, "a", e_type="constant")
+        self._add_tree.add_right(p, "x", e_type="feature")
 
         self._linear_tree = ExpressionTree()
-        p = self._linear_tree.add_root("+")
-        self._linear_tree.add_right(p, "a")
-        p = self._linear_tree.add_left(p, "*")
-        self._linear_tree.add_left(p, "b")
-        self._linear_tree.add_right(p, "x")
+        p = self._linear_tree.add_root("+", e_type="operator")
+        self._linear_tree.add_right(p, "a", e_type="constant")
+        p = self._linear_tree.add_left(p, "*", e_type="operator")
+        self._linear_tree.add_left(p, "b", e_type="constant")
+        self._linear_tree.add_right(p, "x", e_type="feature")
 
         
     def fit(self, X, y, feature_names=None, label_name="y"):
         if type(X) != np.ndarray:
             raise TypeError("X must be an array")
     
-        self.y = y
+        if type(y) is not np.ndarray:
+            raise TypeError("y must be an array")
+    
+        valid_indices = ~np.isnan(y) & np.isfinite(y)
+        
+        # If there's some value to remove it appears as False in the array
+        if False in valid_indices: 
+            print("Input with nan or inf in y data. Removing those value.")
+            self.y = y[valid_indices]
+
+            X = X[:, valid_indices.all(axis=0)]
+        else:
+            self.y = y 
+
         self.label_name = label_name
         
         if feature_names == None:
@@ -227,40 +303,109 @@ class SymbolicRegression():
                 
         return tree
     
-    def evaluate_tree(self, tree):     
-        saida = np.array([])
+    # def evaluate_tree(self, tree):     
+    #     saida = np.array([])
         
         
-        previous_left_value = False
+    #     previous_left_value = False
             
-        # Calcula o valor da árvore para um x
-        for p in tree.postorder():
-            num_children = tree.num_children(p)
-            if num_children == 2: # é operador
-                left_value = self._operators_func[p.element()](left_value, right_value)
-                previous_left_value = True
+    #     # Calcula o valor da árvore para um x
+    #     for p in tree.postorder():
+    #         num_children = tree.num_children(p)
+    #         if num_children == 2: # é operador
+    #             left_value = self._operators_func[p.element()](left_value, right_value)
+    #             previous_left_value = True
 
-            elif num_children == 1: # é função
-                if previous_left_value:
-                    left_value = self._functions_func[p.element()](left_value)
-                else:
-                    right_value = self._functions_func[p.element()](right_value)
+    #         elif num_children == 1: # é função
+    #             if previous_left_value:
+    #                 left_value = self._functions_func[p.element()](left_value)
+    #             else:
+    #                 right_value = self._functions_func[p.element()](right_value)
 
-            else: # é constante ou feature
-                if type(p.element()) != str: #é constante
-                    element = p.element()
-                else: # é feature
-                    element = self._features[p.element()]
+    #         else: # é constante ou feature
+    #             if type(p.element()) != str: #é constante
+    #                 element = p.element()
+    #             else: # é feature
+    #                 element = self._features[p.element()]
 
-                if previous_left_value:
-                    right_value = element
-                    previous_left_value = False
-                else:
-                    left_value = element
-                    previous_left_value = True
-        saida = np.append(saida, left_value)
+    #             if previous_left_value:
+    #                 right_value = element
+    #                 previous_left_value = False
+    #             else:
+    #                 left_value = element
+    #                 previous_left_value = True
+    #     saida = np.append(saida, left_value)
             
-        return saida
+    #     return saida
+
+    @singledispatchmethod
+    def toFunc(self, individual: Any):
+        raise(f"type {type(individual)} is not valid")
+    
+    @toFunc.register
+    def _(self, individual: ExpressionTree):
+        func_string = individual.toString(self._operators, self._functions, self.custom_functions_dict)
+        
+        #Dealing with abstract constants
+        func_string = func_string.replace("[", "").replace("]", "") 
+        
+        # print(func_string)
+
+        features = ""
+        for i in range(len(self._feature_names)-1):
+            features += self._feature_names[i]
+            features += ", "
+        features += self._feature_names[-1]
+                
+
+        func = eval(f"lambda {features}: {func_string}")
+        return func
+    
+    @toFunc.register
+    def _(self, individual: AEG):
+        func_string = individual.aexp.toString(self._operators, self._functions, self.custom_functions_dict)
+        
+        #Dealing with abstract constants
+        func_string = func_string.replace("[", "").replace("]", "") 
+        
+        features = ""
+        for i in range(len(self._feature_names)-1):
+            features += self._feature_names[i]
+            features += ", "
+        features += self._feature_names[-1]
+
+        n_const = len(individual.c.vector)
+        if n_const > 0:
+            additional_features = [f"c{i}" for i in range(n_const)]
+            features += ", "
+            for i in range(len(additional_features)-1):
+                features += additional_features[i]
+                features += ", "
+            features += additional_features[-1]
+                
+
+        func = eval(f"lambda {features}: {func_string}")
+        return func
+
+    def evaluate_tree(self, tree):
+        """I could probably create a version that stores all created functions
+        in a dictionary and then just access this dictionary, instead of creating
+        the function every time. But i'd need a way to erase functions of individuals
+        that are no longer in the population"""
+
+        func = self.toFunc(tree)
+        features = np.array(list(self._features.values()))
+        
+        try: 
+            output = func(*features)
+            return output
+        except OverflowError as e:
+            logging.basicConfig(level=logging.ERROR, filename='error.log', format='%(asctime)s - %(levelname)s - %(message)s')
+            logging.info(f"Overflow error in evaluate_tree: {e}.")
+
+            return np.inf
+        
+
     @singledispatchmethod
     def fitness_score(self, individual: Any, custom_func = None):
         raise(f"type {individual} is not valid")
@@ -372,12 +517,13 @@ class SymbolicRegression():
         for i in out.inorder():
             if i.Node._element_type == "absConstant":
                 # display(me.aexp.visualize_tree())
-                # print(f"me.c: {me.c}, me.c.vector: {me.c.vector}")
+                # print(f"me.c: {me.c}")
+                # print(f"me.c.vector: {me.c.vector}")
                 try: 
                     r = me.c.vector[k]
                 except:
                     # display(me.aexp.visualize_tree())
-                    # print(me.c.vector)
+                    # print(me.c)
                     raise(TypeError("ERRO"))
                 i.Node._element = r
                 i.Node._element_type = "constant"
@@ -447,7 +593,6 @@ class SymbolicRegression():
         # display(lamb.aexp.visualize_tree())
         # for i in lamb.pool:
         #     print(i.vector)
-        
         if len(population) <= 0:
             population = np.array([])
         
@@ -472,7 +617,7 @@ class SymbolicRegression():
                 
                 
                     
-                w.pool = w.pool[0:self.max_pool_size] # truncating to max_popilation_size
+                w.pool = w.pool[0:self.max_pool_size] # truncating to max_pool_size
                 w.c = w.pool[0]
                 w.sexp = self._convert_to_ExpTree(w)
                 return population
@@ -574,63 +719,15 @@ class SymbolicRegression():
         
         copied = me.sexp.copy_tree(me.sexp.root())
         L = len(copied)
+
+        if L <= 1: 
+            return copied
+
         n_steps = randint(0, L)
-        
         for c, p in enumerate(copied.inorder()):
             if c == n_steps:
-                
-                pick_mutation = randint(0,1)
-                transform_flag = False
 
-                if p.element_type() in ["feature", "function"] and pick_mutation == 0:
-                    transform_flag = True
-                    # Linear Transform
-                    linear_choice = randint(0, 2)
-                    # Add Tree
-                    if linear_choice == 0:
-                        
-                        new_subtree = self._add_tree.copy_tree(self._add_tree.root())
-                        new_subtree.root().Node._left._element = self._options["constant"]()
-                        right_most_element = new_subtree.right(new_subtree.root())
-                    
-                    # Multi Tree
-                    elif linear_choice == 1:
-                        
-                        new_subtree = self._mult_tree.copy_tree(self._mult_tree.root())
-                        new_subtree.root().Node._left._element = self._options["constant"]()
-                        right_most_element = new_subtree.right(new_subtree.root())
-                    
-                    # Linear Transform Tree
-                    elif linear_choice == 2:
-                        
-                        new_subtree = self._linear_tree.copy_tree(self._linear_tree.root())
-                        root = new_subtree.root().Node
-                        root._right._element = self._options["constant"]()
-                        root._left._left._element = self._options["constant"]()
-                        right_most_element = new_subtree.right(new_subtree.left(new_subtree.root()))
-
-                    parent = copied.parent(p)
-                    right_most_parent = new_subtree.parent(right_most_element)
-                    new_subtree.delete(right_most_element)
-                    
-                    if copied.is_root(p):
-                        right_most_parent.Node._right = copied.root().Node
-                        copied.root().Node._parent = right_most_parent.Node
-                        copied._root = new_subtree.root().Node
-                        
-                    else:
-                        copied_parent = copied.parent(p)
-                        if copied.is_left(p):
-                            copied_parent.Node._left = new_subtree._root
-                        else:
-                            copied_parent.Node._right = new_subtree._root
-                        
-                        right_most_parent.Node._right = p.Node
-                        p.Node._parent = right_most_parent.Node
-                        new_subtree._root._parent = copied_parent.Node
-
-
-                if not copied.is_leaf(p) and transform_flag==False:
+                if not copied.is_leaf(p):
                     random_number = randint(0,1)
                     
                     # attach subtree above
@@ -668,20 +765,35 @@ class SymbolicRegression():
                         copied.replace(p, self._options[p.element_type()](), p.element_type())
                     
                 # its a leaf
-                elif copied.is_leaf(p) and transform_flag==False:
+                elif copied.is_leaf(p):
                     random_number = randint(1,2)                    
 
                     # Attach a random subtree
                     if random_number == 1:
                         size = randint(1, 2)
                         subtree = self.generate_expr(size)
-                        
                         copied.attach_subtree(p,subtree)
+                        # try:
+                        #     copied.attach_subtree(p,subtree)
+                        # except:
+                        #     display(copied.visualize_tree())
+                        #     print(p, type(p))
+                        #     display(subtree.visualize_tree())
+                        #     raise("ERRO na posição p - mutação")
                     
                     # Delete the node
                     elif random_number == 2:
                         parent = copied.parent(p)
                         e_type = parent.element_type()
+                        
+                        # try:
+                        #     e_type = parent.element_type()
+                        # except:
+                        #     print(p, type(p))
+                        #     display(copied.visualize_tree())
+                        #     print(c)
+                        #     raise("ERRO na posição p - mutação")
+
                         copied.delete(p)
                         
                         if e_type == "function": # if the parent was function becomes feature or constant
@@ -693,7 +805,12 @@ class SymbolicRegression():
                             copied.replace(parent, choice(self._functions), "function")
         
                 break
-            
+        
+        sc = 0
+        for _ in copied.preorder():
+            sc += 1
+        copied._size = sc
+
         copied = self._convert_to_AEG(copied)
         return copied
     
@@ -707,6 +824,11 @@ class SymbolicRegression():
         mom = mom.sexp.copy_tree(mom.sexp.root())
         Ld = len(dad)
         Lm = len(mom)
+
+        # If the mom's expression is too small (a single node) there can't be crossover
+        if Lm <= 1:
+            return mom
+
         n = randint(0, Ld-1)
         m = randint(1, Lm-1)  
         
@@ -718,21 +840,744 @@ class SymbolicRegression():
             if c == n:
                 sub_expression = dad.copy_tree(p)
                 break
-        
+            d=c
         # getting mother location
         for c, p in enumerate(mom.preorder()):
             if (c == m):
-                mom.attach_subtree(p, sub_expression)
+                try:
+                    mom.attach_subtree(p, sub_expression)
+                except:
+                    print(n, len(dad), dad, d)
                 break
         
-        
+        sc = 0
+        for _ in mom.preorder():
+            sc += 1
+        mom._size = sc
         mom = self._convert_to_AEG(mom)
         return mom
         
     def _generate_random_velocity(self, dimensions, max_speed = 1.0):
         return np.random.uniform(0, max_speed, dimensions)
         
-    def optimizeConstants(self, me: AEG, g: int, Ic: int):
+    #-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+    #                  Constant Optimization
+    #-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+
+    def optimizeConstants(self, me:AEG, g: int, Ic: int, check_pool: bool):
+        # Individuals must have two or more particles in the pool
+        # Only the "best solutions" get optimized constants
+        if len(me.c.vector) <= 0:
+                return me.copy_AEG(), 0
+        
+        if len(me.pool) <= 1 and check_pool == True: 
+            return me.copy_AEG(), 0
+
+
+        # Dealing with nans and infs - From the input functions
+        X_filtered = self._features[self._feature_names[0]].copy()
+        y_filtered = self.y.copy()
+
+        # Se um individuo gera um resultado com nans ou inf que não estavam no conjunto original vamos descarta-lo. 
+        func = self.toFunc(me)
+        y_test = func(X_filtered, *me.pool[0].vector)
+            # Sometimes the func evaluation may return a single constant. This happens when it doesnt utilize a feature in the tree. That's why the if
+        if type(y_test) is np.ndarray:
+            valid_indices = ~np.isnan(y_test) & np.isfinite(y_test)
+            if False in valid_indices:
+                return me, 0
+        elif np.isnan(y_test) or ~np.isfinite(y_test):
+            # TO REMOVE
+            print("got nan or inf in function")
+            return me, 0
+
+
+        if self.optimization_kind == "NoOpt":
+            # Baseline for comparison, no optimization method
+            me = me.copy_AEG()
+            return me, 0
+
+
+        if self.optimization_kind == "PSO":
+            if check_pool == False:
+                return me.copy_AEG(), 0
+            else:
+                r_me, r_Ic = self.PSO(me, g, Ic)
+                return r_me, r_Ic
+            
+        if self.optimization_kind == "PSO_NEW":
+            me = me.copy_AEG()
+
+            # TO REMOVE
+            
+            # Set-up hyperparameters
+            options = {'c1': 0.5, 'c2': 0.3, 'w':0.9}
+            n_particles = 30
+            iterations = 300
+
+
+            n_params = len(me.pool[0].vector)
+            if n_params <= 0:
+                print("nada para otimizar")
+                return me, 0    # In this case there's nothing to optimize
+
+
+            # Creating a string that later will be converted to a function call
+            fcall_string = "func(X"
+            for i in range(n_params):
+                fcall_string += f", params[{i}]"
+            fcall_string += ")"
+            
+
+            def cost_function(params, X, y):
+                func = self.toFunc(me)
+                y_pred = eval(fcall_string)
+                
+                # Dealing with functions that result nan in the evaluation proccess
+                if np.isnan(y_pred).any(): 
+                    # Equivalent to return np.inf except pyswarm can handle np.inf
+                    return 1e10
+                return np.mean((y - y_pred)**2, axis=0)            
+
+            # We need to return a MSE value for each particle. That's why we need to call the cost function for each particle (param combination)
+            def cost_function_wrapper(params):
+                arr = np.array([cost_function(p, X_filtered, y_filtered) for p in params])
+                return arr
+
+            # Call instance of PSO
+            optimizer = pyswarms.single.GlobalBestPSO(n_particles=n_particles, dimensions=n_params, options=options)
+
+            # Perform optimization
+            try:
+                _, pos = optimizer.optimize(cost_function_wrapper, iters=iterations, verbose=False)  
+            except Exception as e:
+                logging.basicConfig(level=logging.ERROR, filename='error.log', format='%(asctime)s - %(levelname)s - %(message)s')
+
+                func_string = me.sexp.toString_smp(self._operators, self._functions, self.custom_functions_dict)
+                func = self.toFunc(me)
+                X = X_filtered
+                y = y_filtered
+                params = me.pool[0].vector
+                logging.info(f"Raised exception in PSO_NEW, these are the params used for fcall_string: {params}.\n Error: {e}")
+                y_pred = eval(fcall_string)
+                
+                logging.info(f"Raised error after PSO_NEW optimization. \nfunction:{func_string}\nfcallstring: {fcall_string}\ny_pred:{y_pred}")
+
+                return me, 0
+
+
+            particle = Particle(pos, 
+                                    self._generate_random_velocity(me.pool[0].vector.shape[0]),
+                                    me.pool[0].vector)  
+            me.pool.append(particle)
+            me.pool = self.sort_pool_array(me)
+            me.c = me.pool[0]
+            me.sexp.fitness_score = self.fitness_score(me)
+            me.sexp = self._convert_to_ExpTree(me)      
+            
+            # except ValueError as e:
+            #     logging.basicConfig(level=logging.ERROR, filename='error.log', format='%(asctime)s - %(levelname)s - %(message)s')
+            #     logging.info(f"Raised error in NEW_PSO optimization. The fcall_string was {fcall_string}.")
+
+            #     print(f"Raised error in NEW_PSO optimization. The fcall_string was {fcall_string}.")
+                
+
+            return me, 0
+        
+        if self.optimization_kind == "LS":
+            me = me.copy_AEG()
+
+            # X and y must be flat for curve fit
+            # For the future, if working with multiple variables use np.vstack to pass multiple features instead of X[:, 1], X[:, 2], ...
+            X_flat = X_filtered.flatten()
+            y_flat = y_filtered.flatten()
+            
+
+            # If it can't reach the minimum it'll raise an error
+            try:
+            # print(me.pool[0].vector)
+                params, _ = curve_fit(self.toFunc(me), 
+                                        X_flat, y_flat, me.pool[0].vector,
+                                        maxfev=100000)
+
+            except RuntimeError as e:
+                # TO REMOVE
+                logging.basicConfig(level=logging.ERROR, filename='error.log', format='%(asctime)s - %(levelname)s - %(message)s')
+                function_string = me.sexp.toString_smp(self._operators, self._functions, self.custom_functions_dict)
+                logging.info(f"Raised error after LS optimization. Error: {e}. Function String: {function_string}\n Function:{self.toFunc(me)}\n pool:{me.pool[0].vector}")
+                print("Couldn't find best params in LS")
+            
+                return me, 0
+
+            # If the result of optimization is nan
+            if type(params) is list or type(params) is np.ndarray:
+                valid = ~np.isnan(params) & np.isfinite(params)
+                if False in valid:
+                    print("Param is nan")
+                    return me, 0
+            elif np.isnan(params) or ~np.isfinite(params):
+                # TO REMOVE
+                print("got nan or inf in param optimization")
+                return me, 0
+
+            # TO REMOVE
+            try:
+                particle = Particle(params, 
+                                self._generate_random_velocity(me.pool[0].vector.shape[0]),
+                                me.pool[0].vector) 
+                me.pool.append(particle)
+                me.c = particle
+                me.sexp.fitness_score = self.fitness_score(me)
+                me.sexp = self._convert_to_ExpTree(me)
+
+                func = self.toFunc(me)
+                func(X_filtered, *params)
+            except Exception as e:
+                logging.basicConfig(level=logging.ERROR, filename='error.log', format='%(asctime)s - %(levelname)s - %(message)s')
+                logging.info(f"Raised error after LS optimization. Params are {params}. Error: {e}")
+                print(f"Raised error after LS optimization. Params are {params}. Error: {e}")
+
+
+            # print(params)
+            particle = Particle(params, 
+                                self._generate_random_velocity(me.pool[0].vector.shape[0]),
+                                me.pool[0].vector) 
+            me.pool.append(particle)
+            me.pool = self.sort_pool_array(me)
+            me.c = me.pool[0]
+            me.sexp.fitness_score = self.fitness_score(me)
+            me.sexp = self._convert_to_ExpTree(me)
+
+            # print("reached")
+            # except RuntimeError:
+                # params = me.pool[0]
+            
+            return me, 0
+    
+        if self.optimization_kind == "random_LS":
+            me = me.copy_AEG()
+
+            X_flat = X_filtered.flatten()
+            y_flat = y_filtered.flatten()
+            
+            # Vector of random numbers
+            guess = np.random.uniform(low=self.random_const_range[0], 
+                                        high=self.random_const_range[1],
+                                        size=len(me.pool[0].vector))
+
+            # If it can't reach the minimum it'll raise an error
+            try:
+            # print(me.pool[0].vector)
+                params, _ = curve_fit(self.toFunc(me), 
+                                        X_flat, y_flat, guess,
+                                        maxfev=100000)
+            except RuntimeError as e:
+                # TO REMOVE
+                logging.basicConfig(level=logging.ERROR, filename='error.log', format='%(asctime)s - %(levelname)s - %(message)s')
+                function_string = me.sexp.toString_smp(self._operators, self._functions, self.custom_functions_dict)
+                logging.info(f"Raised error after random LS optimization. Error: {e}. Function String: {function_string}\n Function:{self.toFunc(me)}\n pool:{me.pool[0].vector}")
+                print("Couldn't find best params in random LS")
+
+                return me, 0
+
+            # If the result of optimization is nan
+            if type(params) is list or type(params) is np.ndarray:
+                valid = ~np.isnan(params) & np.isfinite(params)
+                if False in valid:
+                    return me, 0
+            elif np.isnan(params) or ~np.isfinite(params):
+                # TO REMOVE
+                print("got nan or inf in param optimization (randomLS)")
+                return me, 0
+
+            # TO REMOVE
+            try:
+                particle = Particle(params, 
+                                self._generate_random_velocity(me.pool[0].vector.shape[0]),
+                                me.pool[0].vector) 
+                me.pool.append(particle)
+                me.c = particle
+                me.sexp.fitness_score = self.fitness_score(me)
+                me.sexp = self._convert_to_ExpTree(me)
+
+                func = self.toFunc(me)
+                func(X_filtered, *params)
+            except Exception as e:
+                logging.basicConfig(level=logging.ERROR, filename='error.log', format='%(asctime)s - %(levelname)s - %(message)s')
+                logging.info(f"Raised error after random LS optimization. Params are {params}. Error: {e}")
+                print(f"Raised error after random LS optimization. Params are {params}. Error: {e}")
+
+
+            # print(params)
+            particle = Particle(params, 
+                                self._generate_random_velocity(me.pool[0].vector.shape[0]),
+                                me.pool[0].vector) 
+            me.pool.append(particle)
+            me.pool = self.sort_pool_array(me)
+            me.c = me.pool[0]
+            me.sexp.fitness_score = self.fitness_score(me)
+            me.sexp = self._convert_to_ExpTree(me)
+
+            return me, 0
+
+        if self.optimization_kind == "LS_trf":
+            me = me.copy_AEG()
+
+            # X and y must be flat for curve fit
+            # For the future, if working with multiple variables use np.vstack to pass multiple features instead of X[:, 1], X[:, 2], ...
+            X_flat = X_filtered.flatten()
+            y_flat = y_filtered.flatten()
+            
+
+            # If it can't reach the minimum it'll raise an error
+            try:
+            # print(me.pool[0].vector)
+                params, _ = curve_fit(self.toFunc(me), 
+                                        X_flat, y_flat, me.pool[0].vector,
+                                        maxfev=100000, method="trf")
+
+            except RuntimeError as e:
+                # TO REMOVE
+                logging.basicConfig(level=logging.ERROR, filename='error.log', format='%(asctime)s - %(levelname)s - %(message)s')
+                function_string = me.sexp.toString_smp(self._operators, self._functions, self.custom_functions_dict)
+                logging.info(f"Raised error after LS optimization. Error: {e}. Function String: {function_string}\n Function:{self.toFunc(me)}\n pool:{me.pool[0].vector}")
+                print("Couldn't find best params in LS")
+            
+                return me, 0
+
+            except ValueError as e:
+                # TO REMOVE
+                logging.basicConfig(level=logging.ERROR, filename='error.log', format='%(asctime)s - %(levelname)s - %(message)s')
+                function_string = me.sexp.toString_smp(self._operators, self._functions, self.custom_functions_dict)
+                logging.info(f"Raised error after LS trf optimization. Error: {e}. Function String: {function_string}\n Function:{self.toFunc(me)}\n pool:{me.pool[0].vector}\n X:{X_flat}\n y:{y_flat}\ny_test:{y_test}")
+                print("Value error in LS trf")
+
+
+            # If the result of optimization is nan
+            if type(params) is list or type(params) is np.ndarray:
+                valid = ~np.isnan(params) & np.isfinite(params)
+                if False in valid:
+                    print("Param is nan")
+                    return me, 0
+            elif np.isnan(params) or ~np.isfinite(params):
+                # TO REMOVE
+                print("got nan or inf in param optimization")
+                return me, 0
+
+            # TO REMOVE
+            try:
+                particle = Particle(params, 
+                                self._generate_random_velocity(me.pool[0].vector.shape[0]),
+                                me.pool[0].vector) 
+                me.pool.append(particle)
+                me.c = particle
+                me.sexp.fitness_score = self.fitness_score(me)
+                me.sexp = self._convert_to_ExpTree(me)
+
+                func = self.toFunc(me)
+                func(X_filtered, *params)
+            except Exception as e:
+                logging.basicConfig(level=logging.ERROR, filename='error.log', format='%(asctime)s - %(levelname)s - %(message)s')
+                logging.info(f"Raised error after LS optimization. Params are {params}. Error: {e}")
+                print(f"Raised error after LS optimization. Params are {params}. Error: {e}")
+
+
+            # print(params)
+            particle = Particle(params, 
+                                self._generate_random_velocity(me.pool[0].vector.shape[0]),
+                                me.pool[0].vector) 
+            me.pool.append(particle)
+            me.pool = self.sort_pool_array(me)
+            me.c = me.pool[0]
+            me.sexp.fitness_score = self.fitness_score(me)
+            me.sexp = self._convert_to_ExpTree(me)
+
+            # print("reached")
+            # except RuntimeError:
+                # params = me.pool[0]
+            
+            return me, 0
+        
+        if self.optimization_kind == "LS_dogbox":
+            me = me.copy_AEG()
+
+            # X and y must be flat for curve fit
+            # For the future, if working with multiple variables use np.vstack to pass multiple features instead of X[:, 1], X[:, 2], ...
+            X_flat = X_filtered.flatten()
+            y_flat = y_filtered.flatten()
+            
+
+            # If it can't reach the minimum it'll raise an error
+            try:
+            # print(me.pool[0].vector)
+                params, _ = curve_fit(self.toFunc(me), 
+                                        X_flat, y_flat, me.pool[0].vector,
+                                        maxfev=100000, method="dogbox")
+
+            except RuntimeError as e:
+                # TO REMOVE
+                logging.basicConfig(level=logging.ERROR, filename='error.log', format='%(asctime)s - %(levelname)s - %(message)s')
+                function_string = me.sexp.toString_smp(self._operators, self._functions, self.custom_functions_dict)
+                logging.info(f"Raised error after LS optimization. Error: {e}. Function String: {function_string}\n Function:{self.toFunc(me)}\n pool:{me.pool[0].vector}")
+                print("Couldn't find best params in LS")
+            
+                return me, 0
+
+            # If the result of optimization is nan
+            if type(params) is list or type(params) is np.ndarray:
+                valid = ~np.isnan(params) & np.isfinite(params)
+                if False in valid:
+                    print("Param is nan")
+                    return me, 0
+            elif np.isnan(params) or ~np.isfinite(params):
+                # TO REMOVE
+                print("got nan or inf in param optimization")
+                return me, 0
+
+            # TO REMOVE
+            try:
+                particle = Particle(params, 
+                                self._generate_random_velocity(me.pool[0].vector.shape[0]),
+                                me.pool[0].vector) 
+                me.pool.append(particle)
+                me.c = particle
+                me.sexp.fitness_score = self.fitness_score(me)
+                me.sexp = self._convert_to_ExpTree(me)
+
+                func = self.toFunc(me)
+                func(X_filtered, *params)
+            except Exception as e:
+                logging.basicConfig(level=logging.ERROR, filename='error.log', format='%(asctime)s - %(levelname)s - %(message)s')
+                logging.info(f"Raised error after LS optimization. Params are {params}. Error: {e}")
+                print(f"Raised error after LS optimization. Params are {params}. Error: {e}")
+
+
+            # print(params)
+            particle = Particle(params, 
+                                self._generate_random_velocity(me.pool[0].vector.shape[0]),
+                                me.pool[0].vector) 
+            me.pool.append(particle)
+            me.pool = self.sort_pool_array(me)
+            me.c = me.pool[0]
+            me.sexp.fitness_score = self.fitness_score(me)
+            me.sexp = self._convert_to_ExpTree(me)
+
+            # print("reached")
+            # except RuntimeError:
+                # params = me.pool[0]
+            
+            return me, 0
+
+        if self.optimization_kind == "differential_evolution":
+            me = me.copy_AEG()
+            # display(me.aexp.visualize_tree())
+            # print(len(me.pool))
+
+            func = self.toFunc(me)
+            n_params = len(me.pool[0].vector)
+
+            def cost_function(params):
+                X = X_filtered
+                y_pred = func(X, *params)
+                return np.mean((self.y - y_pred)**2)
+            
+            bounds = [(self.random_const_range[0], self.random_const_range[1]) for _ in range(n_params)]
+            # print(bounds)
+
+            result = differential_evolution(cost_function, bounds)
+            params = result.x
+
+            particle = Particle(params, 
+                                    self._generate_random_velocity(me.pool[0].vector.shape[0]),
+                                    me.pool[0].vector)  
+            me.pool.append(particle)
+            me.pool = self.sort_pool_array(me)
+            me.c = me.pool[0]
+            me.sexp.fitness_score = self.fitness_score(me)
+            me.sexp = self._convert_to_ExpTree(me)            
+
+            return me, 0
+        
+        if self.optimization_kind == "dual_annealing":
+            me = me.copy_AEG()
+            n_params = len(me.pool[0].vector)
+
+            def cost_function(params):
+                X = X_filtered
+                y_pred = func(X, *params)
+                return np.mean((self.y - y_pred)**2)
+            
+            bounds = [(self.random_const_range[0], self.random_const_range[1]) for _ in range(n_params)]
+    
+            try:
+                result = dual_annealing(cost_function, bounds)
+            except Exception as e:
+                logging.basicConfig(level=logging.ERROR, filename='error.log', format='%(asctime)s - %(levelname)s - %(message)s')
+                func_string = me.sexp.toString_smp(self._operators, self._functions, self.custom_functions_dict)
+                logging.info(f"Raised error in dual annealing - Error: {e}.\nfunction:{func_string}\n y:{y_test}")
+
+                return me, 0
+                
+            params = result.x
+
+            particle = Particle(params, 
+                                    self._generate_random_velocity(me.pool[0].vector.shape[0]),
+                                    me.pool[0].vector)  
+            me.pool.append(particle)
+            me.pool = self.sort_pool_array(me)
+            me.c = me.pool[0]
+            me.sexp.fitness_score = self.fitness_score(me)
+            me.sexp = self._convert_to_ExpTree(me)            
+
+            return me, 0
+
+        if self.optimization_kind == "Nelder-Mead":
+            me = me.copy_AEG()
+            n_params = len(me.pool[0].vector)
+
+            def cost_function(params):
+                X = X_filtered
+                y_pred = func(X, *params)
+                return np.mean((self.y - y_pred)**2)
+    
+            try:
+                result = minimize(cost_function, x0=me.pool[0].vector, method="Nelder-Mead")
+            except Exception as e:
+                logging.basicConfig(level=logging.ERROR, filename='error.log', format='%(asctime)s - %(levelname)s - %(message)s')
+                func_string = me.sexp.toString_smp(self._operators, self._functions, self.custom_functions_dict)
+                logging.info(f"Raised error in Nelder Mead - Error: {e}.\nfunction:{func_string}")
+
+                return me, 0
+                
+            params = result.x
+
+            particle = Particle(params, 
+                                    self._generate_random_velocity(me.pool[0].vector.shape[0]),
+                                    me.pool[0].vector)  
+            me.pool.append(particle)
+            me.pool = self.sort_pool_array(me)
+            me.c = me.pool[0]
+            me.sexp.fitness_score = self.fitness_score(me)
+            me.sexp = self._convert_to_ExpTree(me)            
+
+            return me, 0
+        
+        if self.optimization_kind == "Nelder-Mead_random":
+            me = me.copy_AEG()
+            n_params = len(me.pool[0].vector)
+
+            def cost_function(params):
+                X = X_filtered
+                y_pred = func(X, *params)
+                return np.mean((self.y - y_pred)**2)
+    
+            # Vector of random numbers
+            guess = np.random.uniform(low=self.random_const_range[0], 
+                                        high=self.random_const_range[1],
+                                        size=len(me.pool[0].vector))
+
+            try:
+                result = minimize(cost_function, x0=guess, method="Nelder-Mead")
+            except Exception as e:
+                logging.basicConfig(level=logging.ERROR, filename='error.log', format='%(asctime)s - %(levelname)s - %(message)s')
+                func_string = me.sexp.toString_smp(self._operators, self._functions, self.custom_functions_dict)
+                logging.info(f"Raised error in Nelder Mead - Error: {e}.\nfunction:{func_string}")
+
+                return me, 0
+                
+            params = result.x
+
+            particle = Particle(params, 
+                                    self._generate_random_velocity(me.pool[0].vector.shape[0]),
+                                    me.pool[0].vector)  
+            me.pool.append(particle)
+            me.pool = self.sort_pool_array(me)
+            me.c = me.pool[0]
+            me.sexp.fitness_score = self.fitness_score(me)
+            me.sexp = self._convert_to_ExpTree(me)            
+
+            return me, 0
+
+        if self.optimization_kind == "BFGS":
+            me = me.copy_AEG()
+            n_params = len(me.pool[0].vector)
+
+            def cost_function(params):
+                X = X_filtered
+                y_pred = func(X, *params)
+                return np.mean((self.y - y_pred)**2)
+    
+            try:
+                result = minimize(cost_function, x0=me.pool[0].vector, method="BFGS")
+            except Exception as e:
+                logging.basicConfig(level=logging.ERROR, filename='error.log', format='%(asctime)s - %(levelname)s - %(message)s')
+                func_string = me.sexp.toString_smp(self._operators, self._functions, self.custom_functions_dict)
+                logging.info(f"Raised error in BFGS - Error: {e}.\nfunction:{func_string}")
+
+                return me, 0
+
+            params = result.x
+
+            try:
+                func = self.toFunc(me)
+                func(X_filtered, *params)
+            except Exception as e:
+                logging.basicConfig(level=logging.ERROR, filename='error.log', format='%(asctime)s - %(levelname)s - %(message)s')
+                func_string = me.sexp.toString_smp(self._operators, self._functions, self.custom_functions_dict)
+                logging.info(f"Raised error in BFGS - Error: {e}.\nfunction:{func_string}")
+                print(f"Raised error in BFGS - Error: {e}.\nfunction:{func_string}")
+
+                return me, 0
+
+            # If the result of optimization is nan
+            if type(params) is list or type(params) is np.ndarray:
+                valid = ~np.isnan(params) & np.isfinite(params)
+                if False in valid:
+                    print("Param is nan")
+                    return me, 0
+            elif np.isnan(params) or ~np.isfinite(params):
+                # TO REMOVE
+                print("got nan or inf in param optimization")
+                return me, 0
+
+            particle = Particle(params, 
+                                    self._generate_random_velocity(me.pool[0].vector.shape[0]),
+                                    me.pool[0].vector)  
+            me.pool.append(particle)
+            me.pool = self.sort_pool_array(me)
+            me.c = me.pool[0]
+            me.sexp.fitness_score = self.fitness_score(me)
+            me.sexp = self._convert_to_ExpTree(me)            
+
+            return me, 0
+        
+        if self.optimization_kind == "BFGS_random":
+            me = me.copy_AEG()
+            n_params = len(me.pool[0].vector)
+
+            def cost_function(params):
+                X = X_filtered
+                y_pred = func(X, *params)
+                return np.mean((self.y - y_pred)**2)
+    
+            # Vector of random numbers
+            guess = np.random.uniform(low=self.random_const_range[0], 
+                                        high=self.random_const_range[1],
+                                        size=len(me.pool[0].vector))
+
+            try:
+                result = minimize(cost_function, x0=guess, method="BFGS")
+            except Exception as e:
+                logging.basicConfig(level=logging.ERROR, filename='error.log', format='%(asctime)s - %(levelname)s - %(message)s')
+                func_string = me.sexp.toString_smp(self._operators, self._functions, self.custom_functions_dict)
+                logging.info(f"Raised error in Nelder Mead - Error: {e}.\nfunction:{func_string}")
+
+                return me, 0
+                
+            params = result.x
+
+            try:
+                func = self.toFunc(me)
+                func(X_filtered, *params)
+            except Exception as e:
+                logging.basicConfig(level=logging.ERROR, filename='error.log', format='%(asctime)s - %(levelname)s - %(message)s')
+                func_string = me.sexp.toString_smp(self._operators, self._functions, self.custom_functions_dict)
+                logging.info(f"Raised error in BFGS - Error: {e}.\nfunction:{func_string}")
+                print(f"Raised error in BFGS - Error: {e}.\nfunction:{func_string}")
+
+                return me, 0
+
+            # If the result of optimization is nan
+            if type(params) is list or type(params) is np.ndarray:
+                valid = ~np.isnan(params) & np.isfinite(params)
+                if False in valid:
+                    print("Param is nan")
+                    return me, 0
+            elif np.isnan(params) or ~np.isfinite(params):
+                # TO REMOVE
+                print("got nan or inf in param optimization")
+                return me, 0
+
+            particle = Particle(params, 
+                                    self._generate_random_velocity(me.pool[0].vector.shape[0]),
+                                    me.pool[0].vector)  
+            me.pool.append(particle)
+            me.pool = self.sort_pool_array(me)
+            me.c = me.pool[0]
+            me.sexp.fitness_score = self.fitness_score(me)
+            me.sexp = self._convert_to_ExpTree(me)            
+
+            return me, 0
+        
+        if self.optimization_kind == "CG":
+            me = me.copy_AEG()
+            n_params = len(me.pool[0].vector)
+
+            def cost_function(params):
+                X = X_filtered
+                y_pred = func(X, *params)
+                return np.mean((self.y - y_pred)**2)
+    
+            try:
+                result = minimize(cost_function, x0=me.pool[0].vector, method="CG")
+            except Exception as e:
+                logging.basicConfig(level=logging.ERROR, filename='error.log', format='%(asctime)s - %(levelname)s - %(message)s')
+                func_string = me.sexp.toString_smp(self._operators, self._functions, self.custom_functions_dict)
+                logging.info(f"Raised error in Nelder Mead - Error: {e}.\nfunction:{func_string}")
+
+                return me, 0
+                
+            params = result.x
+
+            particle = Particle(params, 
+                                    self._generate_random_velocity(me.pool[0].vector.shape[0]),
+                                    me.pool[0].vector)  
+            me.pool.append(particle)
+            me.pool = self.sort_pool_array(me)
+            me.c = me.pool[0]
+            me.sexp.fitness_score = self.fitness_score(me)
+            me.sexp = self._convert_to_ExpTree(me)            
+
+            return me, 0
+        
+        if self.optimization_kind == "CG_random":
+            me = me.copy_AEG()
+            n_params = len(me.pool[0].vector)
+
+            def cost_function(params):
+                X = X_filtered
+                y_pred = func(X, *params)
+                return np.mean((self.y - y_pred)**2)
+    
+            # Vector of random numbers
+            guess = np.random.uniform(low=self.random_const_range[0], 
+                                        high=self.random_const_range[1],
+                                        size=len(me.pool[0].vector))
+
+            try:
+                result = minimize(cost_function, x0=guess, method="CG")
+            except Exception as e:
+                logging.basicConfig(level=logging.ERROR, filename='error.log', format='%(asctime)s - %(levelname)s - %(message)s')
+                func_string = me.sexp.toString_smp(self._operators, self._functions, self.custom_functions_dict)
+                logging.info(f"Raised error in Nelder Mead - Error: {e}.\nfunction:{func_string}")
+
+                return me, 0
+                
+            params = result.x
+
+            particle = Particle(params, 
+                                    self._generate_random_velocity(me.pool[0].vector.shape[0]),
+                                    me.pool[0].vector)  
+            me.pool.append(particle)
+            me.pool = self.sort_pool_array(me)
+            me.c = me.pool[0]
+            me.sexp.fitness_score = self.fitness_score(me)
+            me.sexp = self._convert_to_ExpTree(me)            
+
+            return me, 0
+        
+
+    def PSO(self, me: AEG, g: int, Ic: int):
         """
         Parameters: WL, WG, WV, maxPoolSize
         Summary: Particle Swarm constant optimization optimizes a pool of vectors,
@@ -768,12 +1613,13 @@ class SymbolicRegression():
         
         lbest = me.pool[i].best
         if (lbest.all() == None):
-            lbest = c
+            lbest = c.copy()
             # print("entrei: ", c)
             me.pool[i].best = lbest
+
         
         gbest = me.c.best
-        if (gbest.all() == None):
+        if (gbest.all() == None) or gbest is None:
             gbest = c
             me.c.best = gbest
         
@@ -789,7 +1635,14 @@ class SymbolicRegression():
         
         # Update the particle's velocity and position
         # a coordinate at a time
-        # print(v)
+        
+        if lbest == None:
+            lbest = c.copy()
+        if gbest == None:
+            gbest = c.copy()
+        if v == None:
+            v = self._generate_random_velocity(c.shape)
+
         for i in range(0, I):
             lnudge = (WL * r1 * (lbest[i] - c[i]))
             gnudge = (WG * r2 * (gbest[i] - c[i]))
@@ -890,7 +1743,7 @@ class SymbolicRegression():
             # print("sai")
         # Copy and add a few more random individuals
         else:    
-            out_population = np.copy(in_population)
+            out_population = deepcopy(in_population)
             K = int(self.max_population_size/10)
             
             # Initialize new random population
@@ -940,8 +1793,7 @@ class SymbolicRegression():
             # The tree is too complex, then it goes to the last place
             if island >= self.max_island_count:
                 island = self.max_island_count-1
-            lamb.sexp.island = island
-            
+            lamb.sexp.island = island            
             
             island_counts[island] = island_counts[island] + 1     # Increasing the count of element inside the island
             if (island_counts[island] <= self.max_island_size):
@@ -957,8 +1809,7 @@ class SymbolicRegression():
         champ = in_population[0]
         return champ, islands, in_population  
     
-    
-    def predict(self):
+    def predict(self, gen_fit_path=None):
         """Must initialize Ic as 0"""
         
         max_island_count = 1
@@ -972,37 +1823,83 @@ class SymbolicRegression():
         
         
         for g in range(0, self.G): # Main evolution loop
+            print("iniciou")
             # print("g:", g)
             P = len(in_population)
             # print(in_population)
             
             # initialize Ic for optimizeConstants
+            # Constant optimization for the best individual in each island
             
-            # Everyone gets mutated and crossed over
+            # for i in in_population:
+            #     print("ilha: ",i.sexp.island)
+            # print("========")
+            
+            for i in range(len(islands)):
+                try:
+                    lamb, Ic = self.optimizeConstants(islands[i][0], g, i, check_pool=False)
+                    out_population = self.insertLambda(out_population, lamb)
+                except TypeError: #A ilha tá vazia
+                    pass
+
+            
+            # for i in in_population:
+            #         print("ilha: ",i.sexp.island)
                 
+                # display(islands[i][0].visualize_tree())
+
+
+            # Everyone gets mutated and crossed over
+            
             for p in range(0, P):
                 # print("p:", p)
                 Ic = 0
                 
-                
-                
-                lamb, Ic = self.optimizeConstants(in_population[p], g, Ic)
+                lamb, Ic = self.optimizeConstants(in_population[p], g, Ic, check_pool=True)
                 out_population = self.insertLambda(out_population, lamb)
                 lamb = self.mutateSExp(in_population[p])
                 out_population = self.insertLambda(out_population, lamb)
                 dad = in_population[p] # every one gets crossed over (gets to be a dad)
                 
+                
                 # Cross over partner must be from the same island 
-                K = dad.sexp.island
-                K = np.random.randint(K-self.island_interval[0], K+self.island_interval[1]+1)
+                if dad.sexp.island is None: 
+                    # Have no ideia why this bug happens sometimes, some individuals get here without a defined island
+                    print("empty dad island")
+                    # display(dad.sexp.visualize_tree())
+                    K_original = 0
+                else:
+                    K_original = dad.sexp.island
+
+                try:
+                    K = np.random.randint(K_original-self.island_interval[0], K_original+self.island_interval[1]+1)
+                except:
+                    print(K_original, type(K_original), self.island_interval[0], type(self.island_interval[0]))
+                    raise NotImplementedError("Erro!")
+                
                 if K < 0: K=0
-                if K > self.max_island_count: K = self.max_island_count-1
+                if K >= len(islands): K = len(islands)-1
+
+                if type(islands[K]) is int:
+                    K = K_original
+                
 
                 i = randint(0, len(islands[K])-1)  # Choosing a random individual from island K
                 mom = islands[K][i]   # Getting a random tree from the same island as dad
                 lamb = self.crossoverSExp(dad, mom)
                 out_population = self.insertLambda(out_population, lamb)
+
+
             
-            champ, islands, in_population = self.populationPruning(in_population, out_population, islands)
+            champ, islands, in_population = self.populationPruning(out_population, in_population, islands)
+
+            if gen_fit_path is not None:
+                with open(f"{gen_fit_path}.csv", "a") as file:
+                    file.write(f"{g},{self.fitness_score(champ)}\n")
+
+                with open(f"{gen_fit_path}-{g}", "wb") as file:
+                    pickle.dump(champ.sexp, file)
+                
+
         return champ
         

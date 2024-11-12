@@ -1,0 +1,2 @@
+MSE_error,population,generations,training_time,i_run,solution_string
+528.7551495898127,30,2,0.8686766624450684,0,(exp((x-cos(x)))+x)

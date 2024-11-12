@@ -1,0 +1,4 @@
+MSE_error,population,generations,training_time,i_run,solution_string
+1.6419779055690924,2000,6,3756.9404199123383,0,(abs(x)*cos((x+x)))
+2.0712463807764667,2000,6,2441.1548941135406,1,tan(cos((x+x)))
+1.696497845420775,2000,6,2398.762960910797,2,(cos((x+x))/abs(tan(0.558)))
